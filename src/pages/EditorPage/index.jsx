@@ -5,9 +5,11 @@ import RightPanel from '../../components/RightPanel';
 import BottomBar from '../../components/BottomBar';
 import WidgetCanvas from '../../components/WidgetCanvas/WidgetCanvas';
 import { useProjectStore } from '../../store/useProjectStore.js';
+import { useWidgetStore } from '../../store/useWidgetStore.js';
 
 export default function EditorPage() {
-  const { screens, initProject } = useProjectStore();
+  const { screens, initProject, activeScreenId, pushHistory } = useProjectStore();
+  const { selectedWidgetId, removeWidget, selectWidget } = useWidgetStore();
 
   // Initialize a default project and root screen if the store is empty
   useEffect(() => {
@@ -33,6 +35,28 @@ export default function EditorPage() {
       });
     }
   }, [screens, initProject]);
+
+  // Keyboard shortcuts: Delete/Backspace to remove selected widget, Escape to deselect
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't intercept when user is typing in an input/textarea field
+      const tag = e.target.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedWidgetId) {
+        removeWidget(activeScreenId, selectedWidgetId);
+        selectWidget(null);
+        pushHistory();
+      }
+
+      if (e.key === 'Escape') {
+        selectWidget(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedWidgetId, activeScreenId, removeWidget, selectWidget, pushHistory]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-950 text-slate-100">

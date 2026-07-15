@@ -6,7 +6,7 @@ import { useDeviceStore } from '../store/useDeviceStore.js';
 import { validateProject } from '../engine/validator.js';
 
 export default function RightPanel() {
-  const { widgets, selectedWidgetId, updateWidgetPosition, updateWidgetProps, updateWidgetOnTap, toggleWidgetLock, toggleWidgetVisibility } = useWidgetStore();
+  const { widgets, selectedWidgetId, updateWidgetPosition, updateWidgetProps, updateWidgetOnTap, toggleWidgetLock, toggleWidgetVisibility, removeWidget, selectWidget } = useWidgetStore();
   const { activeScreenId, screens, pushHistory } = useProjectStore();
   const { syncWidgetNavigationToFlow } = useFlowStore();
   const { selectedDevice } = useDeviceStore();
@@ -157,6 +157,12 @@ export default function RightPanel() {
     }
   };
 
+  const handleDeleteWidget = () => {
+    removeWidget(activeScreenId, widget.id);
+    selectWidget(null);
+    pushHistory();
+  };
+
   return (
     <aside className="w-80 bg-slate-900 border-l border-slate-800 flex flex-col h-full text-slate-100 overflow-y-auto">
       {/* 1. Header */}
@@ -165,11 +171,20 @@ export default function RightPanel() {
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
             Properties Panel
           </h2>
-          <span className="text-[10px] text-slate-500 font-mono mt-0.5 block">{widget.id}</span>
+          <span className="text-[10px] text-slate-500 font-mono mt-0.5 block truncate max-w-[140px]">{widget.id}</span>
         </div>
-        <span className="text-xs px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-full font-semibold border border-blue-500/20 uppercase tracking-wider">
-          {widget.type}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-full font-semibold border border-blue-500/20 uppercase tracking-wider">
+            {widget.type}
+          </span>
+          <button
+            onClick={handleDeleteWidget}
+            className="w-7 h-7 flex items-center justify-center rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 transition-all"
+            title="Delete widget (Del)"
+          >
+            🗑
+          </button>
+        </div>
       </div>
 
       <div className="p-6 space-y-6">
@@ -220,14 +235,14 @@ export default function RightPanel() {
           </div>
           
           <div className="flex gap-4 pt-2">
-            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer" title="Prevent widget from being dragged or resized on canvas">
               <input
                 type="checkbox"
                 checked={widget.locked}
                 onChange={() => { toggleWidgetLock(activeScreenId, widget.id); pushHistory(); }}
                 className="rounded bg-slate-950 border-slate-800 text-blue-600 focus:ring-0"
               />
-              <span>Lock Aspect / Move</span>
+              <span>Lock Position</span>
             </label>
             <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
               <input

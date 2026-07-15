@@ -72,15 +72,20 @@ export default function WidgetCanvas() {
     }
   };
 
-  // Drag and Drop: HTML5 Drop listener
+  // ✅ BUG-2 FIX: Use getBoundingClientRect to compute accurate drop position
+  // relative to the Konva Stage canvas element, not the raw viewport.
   const handleDrop = (e) => {
     e.preventDefault();
     const widgetType = e.dataTransfer.getData('application/reactflow');
     if (!widgetType || !activeScreenId) return;
 
     const stage = stageRef.current;
-    stage.setPointersPositions(e);
-    const pointerPosition = stage.getPointerPosition();
+    const stageBox = stage.container().getBoundingClientRect();
+
+    const pointerPosition = {
+      x: e.clientX - stageBox.left,
+      y: e.clientY - stageBox.top,
+    };
 
     // Default sizing based on widget type
     let width = 120;
@@ -143,17 +148,26 @@ export default function WidgetCanvas() {
     pushHistory();
   };
 
-  // Transform operations (resize) via Transformer handles
+  // ✅ BUG-1 FIX: Read original widget.width/height from store, multiply by scale.
+  // Group nodes in Konva do not have an intrinsic width(), so we cannot use
+  // node.width() * scaleX directly — it returns 0. Instead we find the widget in
+  // the store (before scale is applied) and compute the new intended size.
   const handleTransformEnd = (e, widgetId) => {
     const node = e.target;
     const x = Math.round(node.x());
     const y = Math.round(node.y());
-    
-    // Scale properties are applied to width/height to keep scale = 1
-    const width = Math.round(node.width() * node.scaleX());
-    const height = Math.round(node.height() * node.scaleY());
 
-    // Reset scales on the visual node
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+
+    // Find the committed (pre-transform) widget dimensions from store
+    const widgetData = activeWidgets.find((w) => w.id === widgetId);
+    if (!widgetData) return;
+
+    const width = Math.max(20, Math.round(widgetData.width * scaleX));
+    const height = Math.max(20, Math.round(widgetData.height * scaleY));
+
+    // Reset scale back to 1 on the visual node so it renders at the new size
     node.scaleX(1);
     node.scaleY(1);
 
