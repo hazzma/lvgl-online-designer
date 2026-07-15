@@ -359,16 +359,124 @@ export default function RightPanel() {
 
               {/* Analog Controls */}
               {effectiveClockTab === 'analog' && (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><PropLabel>Dial Color</PropLabel><input type="color" value={widget.props.dialColor || '#1e293b'} onChange={(e) => handlePropChange('dialColor', e.target.value)} onBlur={() => pushHistory()} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" /></div>
-                    <div><PropLabel>Dial Border</PropLabel><input type="color" value={widget.props.dialBorderColor || '#475569'} onChange={(e) => handlePropChange('dialBorderColor', e.target.value)} onBlur={() => pushHistory()} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" /></div>
+                <div className="space-y-4">
+
+                  {/* ── Dial background ─────────────────────────────────── */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <PropLabel>Dial Background</PropLabel>
+                      {widget.props.dialImageUrl && (
+                        <button
+                          onClick={() => { handlePropChange('dialImageUrl', null); pushHistory(); }}
+                          className="text-[10px] text-red-400 hover:text-red-300 transition"
+                          title="Remove custom image"
+                        >
+                          ✕ Remove
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Image preview */}
+                    {widget.props.dialImageUrl ? (
+                      <div className="relative w-full h-24 rounded overflow-hidden border border-slate-700 bg-slate-950">
+                        <img
+                          src={widget.props.dialImageUrl}
+                          alt="Dial bg"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition">
+                          <label
+                            htmlFor={`dial-img-${widget.id}`}
+                            className="cursor-pointer text-[10px] font-bold text-white bg-blue-600 px-2 py-1 rounded"
+                          >
+                            Replace
+                          </label>
+                        </div>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor={`dial-img-${widget.id}`}
+                        className="flex flex-col items-center justify-center gap-1.5 w-full h-20 border border-dashed border-slate-700 hover:border-blue-500 rounded cursor-pointer transition group bg-slate-950/60 hover:bg-blue-600/5"
+                      >
+                        <span className="text-xl group-hover:scale-110 transition">🖼</span>
+                        <span className="text-[10px] text-slate-500 group-hover:text-blue-400 transition font-medium">Upload PNG / JPG / WebP</span>
+                        <span className="text-[9px] text-slate-700">Used as circular dial face background</span>
+                      </label>
+                    )}
+
+                    {/* Hidden file input */}
+                    <input
+                      id={`dial-img-${widget.id}`}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          handlePropChange('dialImageUrl', ev.target.result);
+                          pushHistory();
+                        };
+                        reader.readAsDataURL(file);
+                        // Reset input so same file can be re-selected
+                        e.target.value = '';
+                      }}
+                    />
+
+                    {/* Dial color — only relevant when no custom image */}
+                    {!widget.props.dialImageUrl && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><PropLabel>Fill Color</PropLabel><input type="color" value={widget.props.dialColor || '#1e293b'} onChange={(e) => handlePropChange('dialColor', e.target.value)} onBlur={() => pushHistory()} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" /></div>
+                        <div><PropLabel>Border Color</PropLabel><input type="color" value={widget.props.dialBorderColor || '#475569'} onChange={(e) => handlePropChange('dialBorderColor', e.target.value)} onBlur={() => pushHistory()} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" /></div>
+                      </div>
+                    )}
+                    {widget.props.dialImageUrl && (
+                      <div>
+                        <PropLabel>Border Color (ring)</PropLabel>
+                        <input type="color" value={widget.props.dialBorderColor || '#475569'} onChange={(e) => handlePropChange('dialBorderColor', e.target.value)} onBlur={() => pushHistory()} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" />
+                      </div>
+                    )}
                   </div>
+
+                  {/* ── Dial Numbers ────────────────────────────────────── */}
+                  <div className="border border-slate-800 rounded overflow-hidden">
+                    <div className="px-3 py-2 bg-slate-950 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-300">Dial Numbers (1–12)</span>
+                      <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={widget.props.showDialNumbers === true}
+                          onChange={(e) => { handlePropChange('showDialNumbers', e.target.checked); pushHistory(); }}
+                          className="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-0"
+                        />
+                        <span>Show</span>
+                      </label>
+                    </div>
+                    {widget.props.showDialNumbers && (
+                      <div className="px-3 pb-3 pt-2 bg-slate-900/50 space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <PropLabel>Color</PropLabel>
+                            <input type="color" value={widget.props.dialNumberColor || '#94a3b8'} onChange={(e) => handlePropChange('dialNumberColor', e.target.value)} onBlur={() => pushHistory()} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" />
+                          </div>
+                          <div>
+                            <PropLabel>Size (px)</PropLabel>
+                            <input type="number" min="6" max="24" value={widget.props.dialNumberFontSize || 11} onChange={(e) => handlePropChange('dialNumberFontSize', parseInt(e.target.value, 10))} onBlur={() => pushHistory()} className={inputCls} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Hands ───────────────────────────────────────────── */}
                   <div className="grid grid-cols-3 gap-2">
                     <div><PropLabel>Hour Hand</PropLabel><input type="color" value={widget.props.handHourColor || '#ffffff'} onChange={(e) => handlePropChange('handHourColor', e.target.value)} onBlur={() => pushHistory()} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" /></div>
                     <div><PropLabel>Min Hand</PropLabel><input type="color" value={widget.props.handMinuteColor || '#3b82f6'} onChange={(e) => handlePropChange('handMinuteColor', e.target.value)} onBlur={() => pushHistory()} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" /></div>
                     <div><PropLabel>Sec Hand</PropLabel><input type="color" value={widget.props.handSecondColor || '#ef4444'} onChange={(e) => handlePropChange('handSecondColor', e.target.value)} onBlur={() => pushHistory()} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" /></div>
                   </div>
+
+                  {/* ── Toggles ─────────────────────────────────────────── */}
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                       <input type="checkbox" checked={widget.props.showTickMarks !== false} onChange={(e) => { handlePropChange('showTickMarks', e.target.checked); pushHistory(); }} className="rounded bg-slate-950 border-slate-800 text-blue-600 focus:ring-0" />

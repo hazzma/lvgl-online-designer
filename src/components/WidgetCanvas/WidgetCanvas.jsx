@@ -27,6 +27,7 @@ function getDefaultProps(type) {
     case 'clock':
       return {
         clockMode: 'digital',
+        // Digital per-element
         hourFontSize: 36,
         hourColor: '#ffffff',
         hourFontStyle: 'bold',
@@ -40,7 +41,7 @@ function getDefaultProps(type) {
         secFontSize: 20,
         secColor: '#ef4444',
         secFontStyle: 'bold',
-        // Analog
+        // Analog hands
         dialColor: '#1e293b',
         dialBorderColor: '#475569',
         handHourColor: '#ffffff',
@@ -48,6 +49,12 @@ function getDefaultProps(type) {
         handSecondColor: '#ef4444',
         showTickMarks: true,
         showAnalogSeconds: true,
+        // Analog dial numbers (NEW)
+        showDialNumbers: false,
+        dialNumberColor: '#94a3b8',
+        dialNumberFontSize: 11,
+        // Analog custom background (NEW)
+        dialImageUrl: null,
       };
     case 'date':
       return { format: 'DD/MM/YYYY', color: '#94a3b8', fontSize: 14 };
