@@ -8,46 +8,148 @@ export const useWidgetStore = create(
     selectedWidgetId: null,
     focusedWidgetId: null,
 
-    // Select a widget
+    // ── Multi-select (Ctrl+Click in Layers panel) ─────────────────────────────
+    // Set of widget IDs that are currently Ctrl+selected
+    selectedWidgetIds: [],
+
+    // ── Widget Groups ──────────────────────────────────────────────────────────
+    // { [groupId]: { id, name, memberIds: string[], collapsed: bool } }
+    groups: {},
+
+    // ── Single select ─────────────────────────────────────────────────────────
     selectWidget: (widgetId) =>
       set((state) => {
         state.selectedWidgetId = widgetId;
+        state.selectedWidgetIds = []; // clear multi-select when single-selecting
       }),
 
-    // Focus a text area widget
     setFocusedWidget: (widgetId) =>
       set((state) => {
         state.focusedWidgetId = widgetId;
       }),
 
-    // Set complete widget state (used during undo/redo/load)
+    // ── Multi-select ──────────────────────────────────────────────────────────
+    // Toggle a widget in the multi-select set (Ctrl+Click behaviour)
+    toggleMultiSelect: (widgetId) =>
+      set((state) => {
+        const idx = state.selectedWidgetIds.indexOf(widgetId);
+        if (idx === -1) {
+          state.selectedWidgetIds.push(widgetId);
+        } else {
+          state.selectedWidgetIds.splice(idx, 1);
+        }
+        // Keep selectedWidgetId in sync with last clicked
+        state.selectedWidgetId = widgetId;
+      }),
+
+    clearMultiSelect: () =>
+      set((state) => {
+        state.selectedWidgetIds = [];
+      }),
+
+    // ── Groups ────────────────────────────────────────────────────────────────
+    // Create a new group from a list of widget IDs
+    createGroup: (screenId, memberIds, name) =>
+      set((state) => {
+        const groupId = `group-${Date.now()}`;
+        state.groups[groupId] = { id: groupId, name: name || 'Group', memberIds, collapsed: false };
+        // Tag each member widget with the groupId
+        const list = state.widgets[screenId];
+        if (list) {
+          list.forEach((w) => {
+            if (memberIds.includes(w.id)) {
+              w.groupId = groupId;
+            }
+          });
+        }
+        // Clear multi-select after grouping
+        state.selectedWidgetIds = [];
+        state.selectedWidgetId = null;
+      }),
+
+    // Dissolve a group — remove group record + untag all member widgets
+    dissolveGroup: (screenId, groupId) =>
+      set((state) => {
+        const list = state.widgets[screenId];
+        if (list) {
+          list.forEach((w) => {
+            if (w.groupId === groupId) {
+              w.groupId = null;
+            }
+          });
+        }
+        delete state.groups[groupId];
+      }),
+
+    // Toggle group collapsed state in layers panel
+    toggleGroupCollapse: (groupId) =>
+      set((state) => {
+        if (state.groups[groupId]) {
+          state.groups[groupId].collapsed = !state.groups[groupId].collapsed;
+        }
+      }),
+
+    // Lock / unlock all widgets in a group
+    toggleGroupLock: (screenId, groupId) =>
+      set((state) => {
+        const group = state.groups[groupId];
+        if (!group) return;
+        const list = state.widgets[screenId];
+        if (!list) return;
+        const members = list.filter((w) => group.memberIds.includes(w.id));
+        const allLocked = members.every((w) => w.locked);
+        members.forEach((w) => { w.locked = !allLocked; });
+      }),
+
+    // Delete all widgets in a group + the group itself
+    deleteGroup: (screenId, groupId) =>
+      set((state) => {
+        const group = state.groups[groupId];
+        if (!group) return;
+        if (state.widgets[screenId]) {
+          state.widgets[screenId] = state.widgets[screenId].filter(
+            (w) => !group.memberIds.includes(w.id)
+          );
+        }
+        delete state.groups[groupId];
+      }),
+
+    // ── Widget CRUD ───────────────────────────────────────────────────────────
     setWidgets: (newWidgets) =>
       set((state) => {
         state.widgets = newWidgets;
       }),
 
-    // Add a widget to a specific screen and page
     addWidget: (widget) =>
       set((state) => {
         const { screenId } = widget;
         if (!state.widgets[screenId]) {
           state.widgets[screenId] = [];
         }
-        // Push the new widget to the end (highest Z-index initially)
         state.widgets[screenId].push(widget);
       }),
 
-    // Remove a widget from a screen
     removeWidget: (screenId, widgetId) =>
       set((state) => {
         if (state.widgets[screenId]) {
-          state.widgets[screenId] = state.widgets[screenId].filter(
-            (w) => w.id !== widgetId
-          );
+          // Also remove from any groups
+          const widget = state.widgets[screenId].find((w) => w.id === widgetId);
+          if (widget?.groupId && state.groups[widget.groupId]) {
+            state.groups[widget.groupId].memberIds = state.groups[widget.groupId].memberIds.filter((id) => id !== widgetId);
+            // Auto-dissolve group if only 0 or 1 member left
+            if (state.groups[widget.groupId].memberIds.length <= 1) {
+              const remaining = state.groups[widget.groupId].memberIds;
+              delete state.groups[widget.groupId];
+              if (remaining.length === 1) {
+                const lone = state.widgets[screenId].find((w) => w.id === remaining[0]);
+                if (lone) lone.groupId = null;
+              }
+            }
+          }
+          state.widgets[screenId] = state.widgets[screenId].filter((w) => w.id !== widgetId);
         }
       }),
 
-    // Update widget coordinates and dimensions (moved or resized on canvas)
     updateWidgetPosition: (screenId, widgetId, x, y, width, height) =>
       set((state) => {
         const list = state.widgets[screenId];
@@ -62,7 +164,6 @@ export const useWidgetStore = create(
         }
       }),
 
-    // Update custom properties of a widget
     updateWidgetProps: (screenId, widgetId, props) =>
       set((state) => {
         const list = state.widgets[screenId];
@@ -74,7 +175,6 @@ export const useWidgetStore = create(
         }
       }),
 
-    // Update onTap configuration for navigation or triggers
     updateWidgetOnTap: (screenId, widgetId, onTapConfig) =>
       set((state) => {
         const list = state.widgets[screenId];
@@ -86,15 +186,12 @@ export const useWidgetStore = create(
         }
       }),
 
-    // Toggle locks or visibility
     toggleWidgetLock: (screenId, widgetId) =>
       set((state) => {
         const list = state.widgets[screenId];
         if (list) {
           const widget = list.find((w) => w.id === widgetId);
-          if (widget) {
-            widget.locked = !widget.locked;
-          }
+          if (widget) widget.locked = !widget.locked;
         }
       }),
 
@@ -103,39 +200,30 @@ export const useWidgetStore = create(
         const list = state.widgets[screenId];
         if (list) {
           const widget = list.find((w) => w.id === widgetId);
-          if (widget) {
-            widget.visible = !widget.visible;
-          }
+          if (widget) widget.visible = !widget.visible;
         }
       }),
 
-    // Reorder widgets (Z-Index adjustments)
     reorderWidgets: (screenId, reorderedIds) =>
       set((state) => {
         const list = state.widgets[screenId];
         if (list) {
-          // Sort existing widgets based on the order of IDs passed
           state.widgets[screenId] = reorderedIds
             .map((id) => list.find((w) => w.id === id))
             .filter(Boolean);
-          
-          // Re-assign zIndex values sequentially
-          state.widgets[screenId].forEach((w, index) => {
-            w.zIndex = index;
-          });
+          state.widgets[screenId].forEach((w, index) => { w.zIndex = index; });
         }
       }),
 
-    // Clear all widgets from a screen
     clearScreenWidgets: (screenId) =>
       set((state) => {
         state.widgets[screenId] = [];
       }),
 
-    // Clear everything
     clearAllWidgets: () =>
       set((state) => {
         state.widgets = {};
+        state.groups = {};
       }),
   }))
 );
