@@ -1,0 +1,31 @@
+---
+description: Rules for agents working on the export engine and C/H code generation
+globs: ["src/engine/**", "src/data/devices.json", "src/data/animationPresets.json"]
+---
+
+# Export Engine Rules
+
+## Permitted Paths (Write Access)
+- `src/engine/codegen/**` — all code generator scripts
+- `src/engine/templates/**` — Handlebars templates
+- `src/engine/validator.js`
+- `src/data/devices.json`
+- `src/data/animationPresets.json`
+- `src/utils/lvglColor.js`
+- `src/utils/lvglCoord.js`
+- `src/utils/fontUtils.js`
+
+## Restricted Paths (Read-Only)
+- All files in `src/pages/**`
+- All files in `src/components/**`
+- All files in `src/store/**`
+
+## Engine Specific Rules
+- Functions in codegen must accept plain configuration objects (do not pass React state variables directly).
+- Generates C code outputs as raw strings.
+- Support LVGL v8.x API constructs (do not use v9.x functions).
+- Coordinate positioning: use `lv_obj_set_pos(obj, x, y)` for absolute layout styling.
+- Colors: format outputs using `lv_color_hex(0xRRGGBB)`.
+- Default fonts: map standard LVGL fonts to Montserrat variables (e.g. `&lv_font_montserrat_16`).
+- Define DISPLAY_ROTATION and swap macros in display_driver.h to allow IDE-level configuration of screens.
+- Pin conflict validation must run before project compression.

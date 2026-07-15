@@ -1,0 +1,24 @@
+---
+description: Rules for agents working on page-level container routes
+globs: ["src/pages/**"]
+---
+
+# Pages Rules
+
+## Permitted Paths (Write Access)
+- `src/pages/**` — all route components
+
+## Approved Reference Paths (Read-Only)
+- `src/store/**`
+- `src/components/**`
+- `src/hooks/**`
+
+## Restricted Paths
+- All files under `src/engine/**` (except `src/hooks/useExport.js` integration points)
+- All files in `src/components/WidgetRenderer/**` (do not override visual render configurations from pages)
+
+## Container Governance Rules
+- Page components serve as logical orchestrators. Keep inline operations minimal and delegate business logic to custom hooks.
+- EditorPage coordinates the LeftSidebar, Canvas, and RightPanel states.
+- FlowPage uses `@xyflow/react` bindings and Zustand stores. Do not include Konva canvas renderings in the Flow Page.
+- ExportPage maps files directly from the codegen coordinator output.

@@ -1,0 +1,25 @@
+---
+description: Rules for agents modifying shared presentation components
+globs: ["src/components/**"]
+---
+
+# UI Components Rules
+
+## Permitted Paths (Write Access)
+- `src/components/**` — all shared visual layout units
+
+## Approved Reference Paths (Read-Only)
+- `src/store/**` (to read data hook interfaces)
+- `src/data/widgetTemplates.json`
+
+## Restricted Paths
+- All files in `src/engine/**`
+- All files in `src/pages/**`
+- All files in `src/store/**` (direct state mutations inside component files are forbidden)
+
+## Presentation Layer Guidelines
+- Shared components should avoid inline store updates. Trigger Zustand actions instead.
+- Use `React.memo` for rendering canvas nodes that update frequently.
+- Utilize standard CSS transitions for smooth micro-animations. Avoid adding third-party transition libraries.
+- Render Konva widgets strictly within Konva Stage/Layer structures.
+- Apply clipping path masks for round frames visually in the preview canvas (DeviceFrame overlay).

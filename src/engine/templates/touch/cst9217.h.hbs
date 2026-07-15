@@ -1,0 +1,19 @@
+#ifndef TOUCH_DRIVER_CST9217_H
+#define TOUCH_DRIVER_CST9217_H
+
+#include "lvgl.h"
+
+#define TOUCH_I2C_ADDR  0x5A  // Custom CST9217 I2C Address
+#define I2C_MASTER_FREQ 100000 // 100 kHz Clock Speed
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void touch_driver_init(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // TOUCH_DRIVER_CST9217_H

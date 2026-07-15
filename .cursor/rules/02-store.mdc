@@ -1,0 +1,25 @@
+---
+description: Rules for agents modifying Zustand stores
+globs: ["src/store/**"]
+---
+
+# State Management Rules
+
+## Permitted Paths (Write Access)
+- `src/store/**` — all Zustand stores
+
+## Approved Reference Paths (Read-Only)
+- `src/data/widgetTemplates.json`
+- `src/data/devices.json`
+- `src/engine/codegen/index.js` (for output interface reference)
+
+## Restricted Paths
+- All files in `src/pages/**`
+- All files in `src/components/**`
+- All files in `src/engine/**`
+
+## Core Data Schema Guidelines
+- Keep stores decoupled. Do not mix canvas widget states with device pin configurations.
+- Use `immer` (or recursive copy utilities) to guarantee immutable updates for nested stores.
+- Do not store React components inside the Zustand store; store only serialized data structures.
+- Implement selective and debounced state snapshot capturing to prevent memory leak issues on undo/redo actions.

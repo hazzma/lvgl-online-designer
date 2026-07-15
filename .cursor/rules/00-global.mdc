@@ -1,0 +1,25 @@
+---
+description: Global rules for all tasks in the WatchForge project
+globs: ["**/*.jsx", "**/*.js", "**/*.css", "**/*.json"]
+---
+
+# Global Rules
+
+## Primary Principles
+- Never write hardcoded screen resolutions or display swap flags — always read configurations from `useDeviceStore` dynamically.
+- All colors exported to C must go through the converter in `src/utils/lvglColor.js`.
+- All coordinates exported to C must go through `src/utils/lvglCoord.js`.
+- Do not modify template handlebars files under `src/engine/templates/` without explicit authorization.
+- Do not install new dependencies in `package.json` without user approval.
+
+## Code Style
+- Use React functional components with custom hooks.
+- Use named exports for all layout files, utilities, and components (except React Router Pages which default-export page structures).
+- Global state must be managed with Zustand. Component-level states use useState/useReducer.
+- Avoid prop drilling past 2 levels; leverage Zustand stores when sharing widget metadata.
+
+## Naming Conventions
+- React components: PascalCase (e.g. `ClockWidget.jsx`).
+- Utility hooks and scripts: camelCase (e.g. `useWidgetDrag.js`).
+- Constants: UPPER_SNAKE_CASE.
+- Zustand store actions: `verbNoun` pattern (e.g. `addWidget`, `removeScreen`).
