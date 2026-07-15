@@ -34,6 +34,19 @@ export const useFlowStore = create(
         state.edges = state.edges.filter((e) => e.id !== edgeId);
       }),
 
+    // Update edge configuration (trigger, animation, duration)
+    updateEdgeConfig: (edgeId, config) =>
+      set((state) => {
+        const edge = state.edges.find((e) => e.id === edgeId);
+        if (edge) {
+          Object.assign(edge, config);
+          // Update label to reflect new config
+          const triggerLabel = config.trigger || edge.trigger || 'button';
+          const animLabel = config.animation || edge.animation || 'slide_left';
+          edge.label = `${triggerLabel} / ${animLabel}`;
+        }
+      }),
+
     // Synchronize widget navigation transitions back to the flow diagram
     syncWidgetNavigationToFlow: (widgetId, sourceScreenId, targetScreenId, onTapConfig) =>
       set((state) => {

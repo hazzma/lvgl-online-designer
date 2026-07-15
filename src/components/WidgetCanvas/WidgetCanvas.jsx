@@ -25,7 +25,30 @@ function getDefaultProps(type) {
     case 'textarea':
       return { text: '', placeholder: 'Enter text...', fontSize: 14 };
     case 'clock':
-      return { format: 'HH:MM:SS', color: '#10b981', fontSize: 28 };
+      return {
+        clockMode: 'digital',
+        hourFontSize: 36,
+        hourColor: '#ffffff',
+        hourFontStyle: 'bold',
+        minuteFontSize: 36,
+        minuteColor: '#3b82f6',
+        minuteFontStyle: 'bold',
+        separatorChar: ':',
+        separatorColor: '#94a3b8',
+        separatorVisible: true,
+        showSeconds: false,
+        secFontSize: 20,
+        secColor: '#ef4444',
+        secFontStyle: 'bold',
+        // Analog
+        dialColor: '#1e293b',
+        dialBorderColor: '#475569',
+        handHourColor: '#ffffff',
+        handMinuteColor: '#3b82f6',
+        handSecondColor: '#ef4444',
+        showTickMarks: true,
+        showAnalogSeconds: true,
+      };
     case 'date':
       return { format: 'DD/MM/YYYY', color: '#94a3b8', fontSize: 14 };
     case 'keyboard':
