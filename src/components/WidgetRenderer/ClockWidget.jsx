@@ -87,10 +87,29 @@ function AnalogClock({ properties, width, height }) {
     dialNumberFontSize = 11,
     // ── NEW: custom dial background image ─────────────────────────────────────
     dialImageUrl = null,
+    // ── NEW: custom hands images ──────────────────────────────────────────────
+    handHourImageUrl = null,
+    handHourWidth = 12,
+    handHourHeight = 0, // 0 means auto calculate based on radius
+    handHourPivotX = 0.5,
+    handHourPivotY = 0.8,
+    handMinuteImageUrl = null,
+    handMinuteWidth = 8,
+    handMinuteHeight = 0,
+    handMinutePivotX = 0.5,
+    handMinutePivotY = 0.8,
+    handSecondImageUrl = null,
+    handSecondWidth = 4,
+    handSecondHeight = 0,
+    handSecondPivotX = 0.5,
+    handSecondPivotY = 0.8,
   } = properties;
 
   // Load the custom background PNG/JPG as an HTMLImageElement for Konva
   const [dialHtmlImage, setDialHtmlImage] = useState(null);
+  const [hourHtmlImage, setHourHtmlImage] = useState(null);
+  const [minuteHtmlImage, setMinuteHtmlImage] = useState(null);
+  const [secondHtmlImage, setSecondHtmlImage] = useState(null);
 
   useEffect(() => {
     if (!dialImageUrl) {
@@ -102,6 +121,39 @@ function AnalogClock({ properties, width, height }) {
     img.onerror = () => setDialHtmlImage(null);
     img.src = dialImageUrl;
   }, [dialImageUrl]);
+
+  useEffect(() => {
+    if (!handHourImageUrl) {
+      setHourHtmlImage(null);
+      return;
+    }
+    const img = new window.Image();
+    img.onload = () => setHourHtmlImage(img);
+    img.onerror = () => setHourHtmlImage(null);
+    img.src = handHourImageUrl;
+  }, [handHourImageUrl]);
+
+  useEffect(() => {
+    if (!handMinuteImageUrl) {
+      setMinuteHtmlImage(null);
+      return;
+    }
+    const img = new window.Image();
+    img.onload = () => setMinuteHtmlImage(img);
+    img.onerror = () => setMinuteHtmlImage(null);
+    img.src = handMinuteImageUrl;
+  }, [handMinuteImageUrl]);
+
+  useEffect(() => {
+    if (!handSecondImageUrl) {
+      setSecondHtmlImage(null);
+      return;
+    }
+    const img = new window.Image();
+    img.onload = () => setSecondHtmlImage(img);
+    img.onerror = () => setSecondHtmlImage(null);
+    img.src = handSecondImageUrl;
+  }, [handSecondImageUrl]);
 
   const cx = width / 2;
   const cy = height / 2;
@@ -209,13 +261,57 @@ function AnalogClock({ properties, width, height }) {
       ))}
 
       {/* ── Hands ───────────────────────────────────────────────────────── */}
-      <Line points={[cx, cy, hourHand.x,   hourHand.y]}   stroke={handHourColor}   strokeWidth={4} lineCap="round" />
-      <Line points={[cx, cy, minuteHand.x, minuteHand.y]} stroke={handMinuteColor} strokeWidth={3} lineCap="round" />
-      <Line
-        points={[cx, cy, secondHand.x, secondHand.y]}
-        stroke={handSecondColor} strokeWidth={1.5} lineCap="round"
-        visible={showAnalogSeconds}
-      />
+      {hourHtmlImage ? (
+        <KonvaImage
+          image={hourHtmlImage}
+          x={cx}
+          y={cy}
+          width={handHourWidth}
+          height={handHourHeight || Math.round(radius * 0.65)}
+          offsetX={handHourWidth * handHourPivotX}
+          offsetY={(handHourHeight || Math.round(radius * 0.65)) * handHourPivotY}
+          rotation={hoursAngle}
+        />
+      ) : (
+        <Line points={[cx, cy, hourHand.x, hourHand.y]} stroke={handHourColor} strokeWidth={4} lineCap="round" />
+      )}
+
+      {minuteHtmlImage ? (
+        <KonvaImage
+          image={minuteHtmlImage}
+          x={cx}
+          y={cy}
+          width={handMinuteWidth}
+          height={handMinuteHeight || Math.round(radius * 0.85)}
+          offsetX={handMinuteWidth * handMinutePivotX}
+          offsetY={(handMinuteHeight || Math.round(radius * 0.85)) * handMinutePivotY}
+          rotation={minutesAngle}
+        />
+      ) : (
+        <Line points={[cx, cy, minuteHand.x, minuteHand.y]} stroke={handMinuteColor} strokeWidth={3} lineCap="round" />
+      )}
+
+      {showAnalogSeconds && (
+        secondHtmlImage ? (
+          <KonvaImage
+            image={secondHtmlImage}
+            x={cx}
+            y={cy}
+            width={handSecondWidth}
+            height={handSecondHeight || Math.round(radius * 0.9)}
+            offsetX={handSecondWidth * handSecondPivotX}
+            offsetY={(handSecondHeight || Math.round(radius * 0.9)) * handSecondPivotY}
+            rotation={secondsAngle}
+          />
+        ) : (
+          <Line
+            points={[cx, cy, secondHand.x, secondHand.y]}
+            stroke={handSecondColor}
+            strokeWidth={1.5}
+            lineCap="round"
+          />
+        )
+      )}
 
       {/* ── Center pivot dot ────────────────────────────────────────────── */}
       <Circle x={cx} y={cy} radius={4} fill={handHourColor} />

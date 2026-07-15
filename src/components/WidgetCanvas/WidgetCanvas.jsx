@@ -49,12 +49,28 @@ function getDefaultProps(type) {
         handSecondColor: '#ef4444',
         showTickMarks: true,
         showAnalogSeconds: true,
-        // Analog dial numbers (NEW)
+        // Analog dial numbers
         showDialNumbers: false,
         dialNumberColor: '#94a3b8',
         dialNumberFontSize: 11,
-        // Analog custom background (NEW)
+        // Analog custom background
         dialImageUrl: null,
+        // Analog custom hands (NEW)
+        handHourImageUrl: null,
+        handHourWidth: 12,
+        handHourHeight: 0,
+        handHourPivotX: 0.5,
+        handHourPivotY: 0.85,
+        handMinuteImageUrl: null,
+        handMinuteWidth: 8,
+        handMinuteHeight: 0,
+        handMinutePivotX: 0.5,
+        handMinutePivotY: 0.85,
+        handSecondImageUrl: null,
+        handSecondWidth: 4,
+        handSecondHeight: 0,
+        handSecondPivotX: 0.5,
+        handSecondPivotY: 0.85,
       };
     case 'date':
       return { format: 'DD/MM/YYYY', color: '#94a3b8', fontSize: 14 };

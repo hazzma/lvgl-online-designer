@@ -70,7 +70,146 @@ function ClockElementRow({ label, color, colorKey, fontSize, fontSizeKey, fontSt
   );
 }
 
+
+// ── Hand setting row ───────────────────────────────────────────────────────────
+function HandSettingsRow({
+  label,
+  color, colorKey,
+  imageUrl, imageUrlKey,
+  width, widthKey,
+  height, heightKey,
+  pivotX, pivotXKey,
+  pivotY, pivotYKey,
+  onPropChange, onBlur, pushHistory, widgetId
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border border-slate-800 rounded overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-slate-950 hover:bg-slate-900 transition text-left"
+      >
+        <span className="text-[11px] font-semibold text-slate-300">{label}</span>
+        <div className="flex items-center gap-2">
+          {imageUrl ? (
+            <span className="text-[9px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded font-bold font-mono">PNG</span>
+          ) : (
+            <span className="w-3.5 h-3.5 rounded-full border border-slate-700" style={{ backgroundColor: color }} />
+          )}
+          <span className="text-slate-500 text-xs">{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-2 bg-slate-900/50 space-y-3">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <PropLabel>Hand Image (PNG)</PropLabel>
+              {imageUrl && (
+                <button
+                  onClick={() => { onPropChange(imageUrlKey, null); pushHistory(); }}
+                  className="text-[9px] text-red-400 hover:text-red-300 transition font-bold"
+                >
+                  ✕ Remove
+                </button>
+              )}
+            </div>
+
+            {imageUrl ? (
+              <div className="relative w-full h-14 rounded overflow-hidden border border-slate-700 bg-slate-950 flex items-center justify-center p-1">
+                <img src={imageUrl} alt={label} className="h-full object-contain" />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition">
+                  <label htmlFor={`hand-img-${imageUrlKey}`} className="cursor-pointer text-[9px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded">
+                    Replace
+                  </label>
+                </div>
+              </div>
+            ) : (
+              <label
+                htmlFor={`hand-img-${imageUrlKey}`}
+                className="flex items-center justify-center gap-1.5 w-full h-10 border border-dashed border-slate-700 hover:border-blue-500 rounded cursor-pointer transition bg-slate-950/60 text-[10px] text-slate-500 hover:text-blue-400 hover:bg-blue-600/5"
+              >
+                <span>➕ Upload Custom Hand Image</span>
+              </label>
+            )}
+
+            <input
+              id={`hand-img-${imageUrlKey}`}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  onPropChange(imageUrlKey, ev.target.result);
+                  pushHistory();
+                };
+                reader.readAsDataURL(file);
+                e.target.value = '';
+              }}
+            />
+          </div>
+
+          {!imageUrl && (
+            <div>
+              <PropLabel>Vector Color</PropLabel>
+              <input type="color" value={color} onChange={(e) => onPropChange(colorKey, e.target.value)} onBlur={onBlur} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" />
+            </div>
+          )}
+
+          {imageUrl && (
+            <div className="space-y-3 pt-2 border-t border-slate-800">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <PropLabel>Width (px)</PropLabel>
+                  <input type="number" min="1" max="150" value={width || 10} onChange={(e) => onPropChange(widthKey, parseInt(e.target.value, 10))} onBlur={onBlur} className={inputCls} />
+                </div>
+                <div>
+                  <PropLabel>Height (px)</PropLabel>
+                  <input type="number" min="0" max="300" value={height || 0} placeholder="Auto" onChange={(e) => onPropChange(heightKey, parseInt(e.target.value, 10))} onBlur={onBlur} className={inputCls} />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-[9px] text-slate-500 mb-0.5 uppercase font-bold tracking-wider">
+                  <span>Pivot X (Axis)</span>
+                  <span className="font-mono">{(pivotX * 100).toFixed(0)}%</span>
+                </div>
+                <input
+                  type="range" min="0" max="1" step="0.05"
+                  value={pivotX ?? 0.5}
+                  onChange={(e) => onPropChange(pivotXKey, parseFloat(e.target.value))}
+                  onMouseUp={pushHistory}
+                  onTouchEnd={pushHistory}
+                  className="w-full accent-blue-500 cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-[9px] text-slate-500 mb-0.5 uppercase font-bold tracking-wider">
+                  <span>Pivot Y (Axis)</span>
+                  <span className="font-mono">{(pivotY * 100).toFixed(0)}%</span>
+                </div>
+                <input
+                  type="range" min="0" max="1" step="0.05"
+                  value={pivotY ?? 0.8}
+                  onChange={(e) => onPropChange(pivotYKey, parseFloat(e.target.value))}
+                  onMouseUp={pushHistory}
+                  onTouchEnd={pushHistory}
+                  className="w-full accent-blue-500 cursor-pointer"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main RightPanel ───────────────────────────────────────────────────────────
+
 export default function RightPanel() {
   const { widgets, selectedWidgetId, updateWidgetPosition, updateWidgetProps, updateWidgetOnTap, toggleWidgetLock, toggleWidgetVisibility, removeWidget, selectWidget } = useWidgetStore();
   const { activeScreenId, screens, pushHistory } = useProjectStore();
@@ -470,10 +609,67 @@ export default function RightPanel() {
                   </div>
 
                   {/* ── Hands ───────────────────────────────────────────── */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div><PropLabel>Hour Hand</PropLabel><input type="color" value={widget.props.handHourColor || '#ffffff'} onChange={(e) => handlePropChange('handHourColor', e.target.value)} onBlur={() => pushHistory()} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" /></div>
-                    <div><PropLabel>Min Hand</PropLabel><input type="color" value={widget.props.handMinuteColor || '#3b82f6'} onChange={(e) => handlePropChange('handMinuteColor', e.target.value)} onBlur={() => pushHistory()} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" /></div>
-                    <div><PropLabel>Sec Hand</PropLabel><input type="color" value={widget.props.handSecondColor || '#ef4444'} onChange={(e) => handlePropChange('handSecondColor', e.target.value)} onBlur={() => pushHistory()} className="w-full h-8 p-0.5 bg-slate-950 border border-slate-800 rounded cursor-pointer" /></div>
+                  <div className="space-y-2">
+                    <PropLabel>Custom Hands</PropLabel>
+                    <HandSettingsRow
+                      label="Hour Hand"
+                      color={widget.props.handHourColor || '#ffffff'}
+                      colorKey="handHourColor"
+                      imageUrl={widget.props.handHourImageUrl}
+                      imageUrlKey="handHourImageUrl"
+                      width={widget.props.handHourWidth}
+                      widthKey="handHourWidth"
+                      height={widget.props.handHourHeight}
+                      heightKey="handHourHeight"
+                      pivotX={widget.props.handHourPivotX}
+                      pivotXKey="handHourPivotX"
+                      pivotY={widget.props.handHourPivotY}
+                      pivotYKey="handHourPivotY"
+                      onPropChange={handlePropChange}
+                      onBlur={() => pushHistory()}
+                      pushHistory={pushHistory}
+                      widgetId={widget.id}
+                    />
+                    <HandSettingsRow
+                      label="Minute Hand"
+                      color={widget.props.handMinuteColor || '#3b82f6'}
+                      colorKey="handMinuteColor"
+                      imageUrl={widget.props.handMinuteImageUrl}
+                      imageUrlKey="handMinuteImageUrl"
+                      width={widget.props.handMinuteWidth}
+                      widthKey="handMinuteWidth"
+                      height={widget.props.handMinuteHeight}
+                      heightKey="handMinuteHeight"
+                      pivotX={widget.props.handMinutePivotX}
+                      pivotXKey="handMinutePivotX"
+                      pivotY={widget.props.handMinutePivotY}
+                      pivotYKey="handMinutePivotY"
+                      onPropChange={handlePropChange}
+                      onBlur={() => pushHistory()}
+                      pushHistory={pushHistory}
+                      widgetId={widget.id}
+                    />
+                    {widget.props.showAnalogSeconds !== false && (
+                      <HandSettingsRow
+                        label="Second Hand"
+                        color={widget.props.handSecondColor || '#ef4444'}
+                        colorKey="handSecondColor"
+                        imageUrl={widget.props.handSecondImageUrl}
+                        imageUrlKey="handSecondImageUrl"
+                        width={widget.props.handSecondWidth}
+                        widthKey="handSecondWidth"
+                        height={widget.props.handSecondHeight}
+                        heightKey="handSecondHeight"
+                        pivotX={widget.props.handSecondPivotX}
+                        pivotXKey="handSecondPivotX"
+                        pivotY={widget.props.handSecondPivotY}
+                        pivotYKey="handSecondPivotY"
+                        onPropChange={handlePropChange}
+                        onBlur={() => pushHistory()}
+                        pushHistory={pushHistory}
+                        widgetId={widget.id}
+                      />
+                    )}
                   </div>
 
                   {/* ── Toggles ─────────────────────────────────────────── */}
