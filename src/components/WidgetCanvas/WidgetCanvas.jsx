@@ -4,6 +4,7 @@ import { useWidgetStore } from '../../store/useWidgetStore.js';
 import { useProjectStore } from '../../store/useProjectStore.js';
 import { useDeviceStore } from '../../store/useDeviceStore.js';
 import { getDefaultProps, getDefaultSize } from '../../utils/widgetDefaults.js';
+import AlignmentToolbar from '../AlignmentToolbar.jsx';
 import TextWidget from '../WidgetRenderer/TextWidget';
 import RectWidget from '../WidgetRenderer/RectWidget';
 import ButtonWidget from '../WidgetRenderer/ButtonWidget';
@@ -167,24 +168,24 @@ export default function WidgetCanvas() {
 
   // ── Smart Alignment Guides (Canva-style) ─────────────────────────────────
   // Always calculates alignment. Shows guide lines always. Snaps only if magnetEnabled.
-  const calcAlignmentGuides = (draggedId, posX, posY) => {
+  // overrideW/overrideH: use during resize when store hasn't been updated yet.
+  const calcAlignmentGuides = (draggedId, posX, posY, overrideW, overrideH) => {
     const widgetData = activeWidgets.find((w) => w.id === draggedId);
     if (!widgetData) return { guides: [], snapX: posX, snapY: posY };
 
-    const ww = widgetData.width;
-    const wh = widgetData.height;
+    const ww = overrideW !== undefined ? overrideW : widgetData.width;
+    const wh = overrideH !== undefined ? overrideH : widgetData.height;
     const snapTol = 5;
 
     // Dragged widget edges
-    const dragLeft   = posX;
+    const dragLeft    = posX;
     const dragCenterX = posX + ww / 2;
-    const dragRight  = posX + ww;
-    const dragTop    = posY;
+    const dragRight   = posX + ww;
+    const dragTop     = posY;
     const dragCenterY = posY + wh / 2;
-    const dragBottom = posY + wh;
+    const dragBottom  = posY + wh;
 
-    // Collect all target snap lines from canvas edges/center + other widgets
-    // Each target: { pos: number, label: 'left'|'center'|'right' }
+    // Collect target snap lines from canvas edges/center + other widgets
     const vTargets = [
       { pos: 0, label: 'canvas-left' },
       { pos: selectedDevice.width / 2, label: 'canvas-center' },
@@ -214,11 +215,11 @@ export default function WidgetCanvas() {
       );
     });
 
-    // Find closest X snap
+    // ── Find closest X snap ─────────────────────────────────────────────────
     const dragXEdges = [
-      { offset: 0,      val: dragLeft },     // left edge
-      { offset: ww / 2, val: dragCenterX },  // center
-      { offset: ww,     val: dragRight },    // right edge
+      { offset: 0,      val: dragLeft },
+      { offset: ww / 2, val: dragCenterX },
+      { offset: ww,     val: dragRight },
     ];
 
     let bestSnapX = null;
@@ -239,7 +240,7 @@ export default function WidgetCanvas() {
       }
     }
 
-    // Find closest Y snap
+    // ── Find closest Y snap ─────────────────────────────────────────────────
     const dragYEdges = [
       { offset: 0,      val: dragTop },
       { offset: wh / 2, val: dragCenterY },
@@ -267,6 +268,66 @@ export default function WidgetCanvas() {
     const guides = [];
     matchedVGuides.forEach((pos) => guides.push({ type: 'vertical', pos }));
     matchedHGuides.forEach((pos) => guides.push({ type: 'horizontal', pos }));
+
+    // ── Size-Matching Guides ────────────────────────────────────────────────
+    // Show a guide when the dragged widget's width or height matches another's.
+    const sizeTol = 3;
+    pageWidgets.forEach((other) => {
+      // Width match
+      if (Math.abs(ww - other.width) < sizeTol) {
+        // Draw vertical dash at right edge of dragged and right edge of other
+        guides.push({ type: 'size-w', dragX: posX, dragW: ww, otherX: other.x, otherW: other.width, y: Math.min(posY, other.y) - 6 });
+      }
+      // Height match
+      if (Math.abs(wh - other.height) < sizeTol) {
+        guides.push({ type: 'size-h', dragY: posY, dragH: wh, otherY: other.y, otherH: other.height, x: Math.min(posX, other.x) - 6 });
+      }
+    });
+
+    // ── Equal Spacing (Distribute) Guides ────────────────────────────────────
+    const gapTol = 5;
+
+    // Horizontal equal-spacing check
+    for (let i = 0; i < pageWidgets.length; i++) {
+      const a = pageWidgets[i];
+      for (let j = 0; j < pageWidgets.length; j++) {
+        if (i === j) continue;
+        const b = pageWidgets[j];
+        const gapAfterA = dragLeft - (a.x + a.width);
+        const gapAB = b.x - (a.x + a.width);
+        if (Math.abs(gapAfterA - gapAB) < gapTol && gapAfterA > 0 && gapAB > 0) {
+          guides.push({ type: 'gap-h', x1: a.x + a.width, x2: dragLeft, y: a.y + a.height / 2 });
+          guides.push({ type: 'gap-h', x1: a.x + a.width, x2: b.x, y: b.y + b.height / 2 });
+        }
+        const gapBeforeA = a.x - dragRight;
+        const gapBA = a.x - (b.x + b.width);
+        if (Math.abs(gapBeforeA - gapBA) < gapTol && gapBeforeA > 0 && gapBA > 0) {
+          guides.push({ type: 'gap-h', x1: dragRight, x2: a.x, y: a.y + a.height / 2 });
+          guides.push({ type: 'gap-h', x1: b.x + b.width, x2: a.x, y: b.y + b.height / 2 });
+        }
+      }
+    }
+
+    // Vertical equal-spacing check
+    for (let i = 0; i < pageWidgets.length; i++) {
+      const a = pageWidgets[i];
+      for (let j = 0; j < pageWidgets.length; j++) {
+        if (i === j) continue;
+        const b = pageWidgets[j];
+        const gapAfterA = dragTop - (a.y + a.height);
+        const gapAB = b.y - (a.y + a.height);
+        if (Math.abs(gapAfterA - gapAB) < gapTol && gapAfterA > 0 && gapAB > 0) {
+          guides.push({ type: 'gap-v', y1: a.y + a.height, y2: dragTop, x: a.x + a.width / 2 });
+          guides.push({ type: 'gap-v', y1: a.y + a.height, y2: b.y, x: b.x + b.width / 2 });
+        }
+        const gapBeforeA = a.y - dragBottom;
+        const gapBA = a.y - (b.y + b.height);
+        if (Math.abs(gapBeforeA - gapBA) < gapTol && gapBeforeA > 0 && gapBA > 0) {
+          guides.push({ type: 'gap-v', y1: dragBottom, y2: a.y, x: a.x + a.width / 2 });
+          guides.push({ type: 'gap-v', y1: b.y + b.height, y2: a.y, x: b.x + b.width / 2 });
+        }
+      }
+    }
 
     return {
       guides,
@@ -372,6 +433,29 @@ export default function WidgetCanvas() {
     return { x, y };
   };
 
+  // ── Live Transform (resize) guides ──────────────────────────────────────
+  const handleTransform = (e, widgetId) => {
+    const node = e.target;
+    const widgetData = activeWidgets.find((w) => w.id === widgetId);
+    if (!widgetData) return;
+
+    // Compute live dimensions during resize
+    const liveW = Math.max(20, Math.round(widgetData.width * node.scaleX()));
+    const liveH = Math.max(20, Math.round(widgetData.height * node.scaleY()));
+    const liveX = Math.round(node.x());
+    const liveY = Math.round(node.y());
+
+    // Calculate guides with overridden dimensions
+    const { guides } = calcAlignmentGuides(widgetId, liveX, liveY, liveW, liveH);
+
+    const currentStr = JSON.stringify(guideLinesRef.current);
+    const newStr = JSON.stringify(guides);
+    if (currentStr !== newStr) {
+      guideLinesRef.current = guides;
+      setGuideLines(guides);
+    }
+  };
+
   // ✅ BUG-1 FIX: Read original widget.width/height from store, multiply by scale.
   // Group nodes in Konva do not have an intrinsic width(), so we cannot use
   // node.width() * scaleX directly — it returns 0. Instead we find the widget in
@@ -427,6 +511,12 @@ export default function WidgetCanvas() {
           dialNumberFontSize: Math.max(6, Math.round(dialNumberFontSize * scaleY)),
         });
       }
+    }
+
+    // Clear guides on transform end
+    if (guideLinesRef.current.length > 0) {
+      guideLinesRef.current = [];
+      setGuideLines([]);
     }
 
     pushHistory();
@@ -732,6 +822,7 @@ export default function WidgetCanvas() {
                     onDragStart={(e) => handleDragStart(e, w.id)}
                     onDragMove={(e) => handleDragMove(e, w.id)}
                     onDragEnd={(e) => handleDragEnd(e, w.id)}
+                    onTransform={(e) => handleTransform(e, w.id)}
                     onTransformEnd={(e) => handleTransformEnd(e, w.id)}
                     dragBoundFunc={(pos, e) => dragBoundFunc(pos, e)}
                   >
@@ -764,15 +855,97 @@ export default function WidgetCanvas() {
             {/* ── ALIGNMENT GUIDES LAYER (always visible during drag) ── */}
             {guideLines.length > 0 && (
               <Layer listening={false}>
-                {guideLines.map((g, i) => (
-                  <Line
-                    key={i}
-                    points={g.type === 'vertical' ? [g.pos, 0, g.pos, selectedDevice.height] : [0, g.pos, selectedDevice.width, g.pos]}
-                    stroke="#ec4899"
-                    strokeWidth={1.5}
-                    dash={[4, 4]}
-                  />
-                ))}
+                {guideLines.map((g, i) => {
+                  if (g.type === 'vertical') {
+                    return (
+                      <Line
+                        key={i}
+                        points={[g.pos, 0, g.pos, selectedDevice.height]}
+                        stroke="#ec4899"
+                        strokeWidth={1.5}
+                        dash={[4, 4]}
+                      />
+                    );
+                  }
+                  if (g.type === 'horizontal') {
+                    return (
+                      <Line
+                        key={i}
+                        points={[0, g.pos, selectedDevice.width, g.pos]}
+                        stroke="#ec4899"
+                        strokeWidth={1.5}
+                        dash={[4, 4]}
+                      />
+                    );
+                  }
+                  if (g.type === 'gap-h') {
+                    // Horizontal equal-spacing guide — orange line between two X positions
+                    const midY = g.y || selectedDevice.height / 2;
+                    return (
+                      <React.Fragment key={i}>
+                        <Line
+                          points={[g.x1, midY, g.x2, midY]}
+                          stroke="#f97316"
+                          strokeWidth={1.5}
+                        />
+                        {/* Left tick */}
+                        <Line points={[g.x1, midY - 4, g.x1, midY + 4]} stroke="#f97316" strokeWidth={1.5} />
+                        {/* Right tick */}
+                        <Line points={[g.x2, midY - 4, g.x2, midY + 4]} stroke="#f97316" strokeWidth={1.5} />
+                      </React.Fragment>
+                    );
+                  }
+                  if (g.type === 'gap-v') {
+                    // Vertical equal-spacing guide — orange line between two Y positions
+                    const midX = g.x || selectedDevice.width / 2;
+                    return (
+                      <React.Fragment key={i}>
+                        <Line
+                          points={[midX, g.y1, midX, g.y2]}
+                          stroke="#f97316"
+                          strokeWidth={1.5}
+                        />
+                        {/* Top tick */}
+                        <Line points={[midX - 4, g.y1, midX + 4, g.y1]} stroke="#f97316" strokeWidth={1.5} />
+                        {/* Bottom tick */}
+                        <Line points={[midX - 4, g.y2, midX + 4, g.y2]} stroke="#f97316" strokeWidth={1.5} />
+                      </React.Fragment>
+                    );
+                  }
+                  if (g.type === 'size-w') {
+                    // Width-match guide — cyan brackets showing equal widths
+                    const cy = g.y;
+                    return (
+                      <React.Fragment key={i}>
+                        {/* Dragged widget width bracket */}
+                        <Line points={[g.dragX, cy, g.dragX + g.dragW, cy]} stroke="#22d3ee" strokeWidth={1.5} />
+                        <Line points={[g.dragX, cy - 4, g.dragX, cy + 4]} stroke="#22d3ee" strokeWidth={1.5} />
+                        <Line points={[g.dragX + g.dragW, cy - 4, g.dragX + g.dragW, cy + 4]} stroke="#22d3ee" strokeWidth={1.5} />
+                        {/* Other widget width bracket */}
+                        <Line points={[g.otherX, cy, g.otherX + g.otherW, cy]} stroke="#22d3ee" strokeWidth={1.5} />
+                        <Line points={[g.otherX, cy - 4, g.otherX, cy + 4]} stroke="#22d3ee" strokeWidth={1.5} />
+                        <Line points={[g.otherX + g.otherW, cy - 4, g.otherX + g.otherW, cy + 4]} stroke="#22d3ee" strokeWidth={1.5} />
+                      </React.Fragment>
+                    );
+                  }
+                  if (g.type === 'size-h') {
+                    // Height-match guide — cyan brackets showing equal heights
+                    const cx = g.x;
+                    return (
+                      <React.Fragment key={i}>
+                        {/* Dragged widget height bracket */}
+                        <Line points={[cx, g.dragY, cx, g.dragY + g.dragH]} stroke="#22d3ee" strokeWidth={1.5} />
+                        <Line points={[cx - 4, g.dragY, cx + 4, g.dragY]} stroke="#22d3ee" strokeWidth={1.5} />
+                        <Line points={[cx - 4, g.dragY + g.dragH, cx + 4, g.dragY + g.dragH]} stroke="#22d3ee" strokeWidth={1.5} />
+                        {/* Other widget height bracket */}
+                        <Line points={[cx, g.otherY, cx, g.otherY + g.otherH]} stroke="#22d3ee" strokeWidth={1.5} />
+                        <Line points={[cx - 4, g.otherY, cx + 4, g.otherY]} stroke="#22d3ee" strokeWidth={1.5} />
+                        <Line points={[cx - 4, g.otherY + g.otherH, cx + 4, g.otherY + g.otherH]} stroke="#22d3ee" strokeWidth={1.5} />
+                      </React.Fragment>
+                    );
+                  }
+                  return null;
+                })}
               </Layer>
             )}
           </Stage>
@@ -853,6 +1026,11 @@ export default function WidgetCanvas() {
             <span className="absolute bottom-2 text-[8px] font-mono font-bold text-slate-500">({gridX + 1}, {gridY})</span>
           )}
         </div>
+      </div>
+
+      {/* ── Alignment Toolbar (floats above canvas when 2+ widgets selected) ── */}
+      <div className="absolute -top-14 left-0 right-0 flex justify-center pointer-events-none">
+        <AlignmentToolbar />
       </div>
 
       {/* Floating coordinates tag & Snapping Toggles */}

@@ -622,11 +622,18 @@ globs: ["src/pages/**"]
 - **Layers Panel:** Menampilkan hierarki widget, status lock/unlock, visibility, reorder z-index (foreground/background), grouping (`📁 Group`), serta kontrol **Split/Joint** untuk Clock dan Status Bar.
 
 **UX Details — Canvas & Canva-Style Smart Alignment:**
-- **Always-On Visual Guides (Canva Style):** Saat widget di-drag, sistem secara otomatis menghitung dan merender garis pandu alignment berwarna merah muda (`#ec4899`).
-  - **Horizontal Alignment:** Sisi Kiri-ke-Kiri, Tengah-ke-Tengah, Kanan-ke-Kanan, serta Sisi Kiri/Kanan antar widget dan batas canvas.
-  - **Vertical Alignment:** Sisi Atas-ke-Atas, Tengah-ke-Tengah, Bawah-ke-Bawah, serta Sisi Atas/Bawah antar widget dan batas canvas.
+- **Always-On Visual Guides (Canva Style):** Saat widget di-drag atau di-resize, sistem secara otomatis menghitung dan merender garis pandu alignment:
+  - 🩷 **Pink Lines (`#ec4899`):** Edge & Center alignment (Kiri, Tengah X, Kanan, Atas, Tengah Y, Bawah) antar widget dan batas canvas.
+  - 🔷 **Cyan Brackets (`#22d3ee`):** Size-matching guides (`⊢───⊣`) yang otomatis muncul saat lebar (width) atau tinggi (height) widget yang di-resize/drag **persis sama** dengan widget lain.
+  - 🟠 **Orange Lines (`#f97316`):** Equal-spacing distribute guides dengan tick-marks yang muncul saat jarak antar 3+ widget **sama persis** secara horizontal atau vertikal.
+- **Live Transform Alignment (`onTransform`):** Menghitung garis pandu alignment dan size-matching secara *live* saat user mengubah ukuran widget (resize) via Transformer anchor handle.
+- **Floating Alignment Toolbar (`AlignmentToolbar.jsx`):** Melayang otomatis di atas canvas frame saat **2 atau lebih widget di-select**:
+  - **Align:** Left, Center X, Right, Top, Center Y, Bottom.
+  - **Distribute:** Equal Horizontal & Vertical Spacing.
+  - **Match Size:** Samakan Lebar, Samakan Tinggi, Samakan Keduanya.
+  - **Canvas Center:** Ratakan ke Tengah Layar (Horizontal & Vertikal).
 - **Magnet Snapping Toggle (🧲):**
-  - **Visual Guides:** Garis pandu selalu aktif tampil saat drag sebagai referensi visual presisi (seperti Canva / PowerPoint).
+  - **Visual Guides:** Garis pandu selalu aktif tampil saat drag/resize sebagai referensi visual presisi (seperti Canva / PowerPoint).
   - **Magnet ON:** Mengunci dan menempelkan posisi widget secara presisi jika berada dalam toleransi 5px dari garis pandu terdekat.
   - **Magnet OFF:** Garis pandu tetap aktif sebagai visual reference tanpa menarik posisi widget.
 - **High-Contrast Grid (▦):** Toggle grid canvas 10px dengan garis kontras tinggi (`rgba(255,255,255,0.2)`).

@@ -248,6 +248,22 @@ export const useWidgetStore = create(
         state.widgets[screenId] = [];
       }),
 
+    // ── Batch Position/Size Update (Alignment Toolbar) ───────────────────────
+    // patches: [{ id, x?, y?, width?, height? }, ...]
+    batchUpdateWidgets: (screenId, patches) =>
+      set((state) => {
+        const list = state.widgets[screenId];
+        if (!list) return;
+        patches.forEach(({ id, x, y, width, height }) => {
+          const w = list.find((w) => w.id === id);
+          if (!w) return;
+          if (x !== undefined) w.x = x;
+          if (y !== undefined) w.y = y;
+          if (width !== undefined) w.width = width;
+          if (height !== undefined) w.height = height;
+        });
+      }),
+
     clearAllWidgets: () =>
       set((state) => {
         state.widgets = {};

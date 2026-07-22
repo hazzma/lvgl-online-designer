@@ -104,6 +104,17 @@ Added 7 essential smartwatch widgets with custom Konva renderers, designer prope
 ### 15. UI/UX High-Contrast Dark Theme Upgrade (New Update)
 *   **Contrast Enhancement**: Upgraded all low-contrast gray text (`text-slate-400`, `text-slate-500`) to bright, high-legibility classes (`text-slate-200`, `text-slate-100`, `font-bold`) across [LeftSidebar.jsx](file:///c:/Users/hanse/Documents/Web/LVGL_ONLINE_HK/src/components/LeftSidebar.jsx), [RightPanel.jsx](file:///c:/Users/hanse/Documents/Web/LVGL_ONLINE_HK/src/components/RightPanel.jsx), [WidgetCanvas.jsx](file:///c:/Users/hanse/Documents/Web/LVGL_ONLINE_HK/src/components/WidgetCanvas/WidgetCanvas.jsx), and [BottomBar.jsx](file:///c:/Users/hanse/Documents/Web/LVGL_ONLINE_HK/src/components/BottomBar.jsx).
 
+### 16. Floating Alignment Toolbar & Canva-Grade Smart Guides (New Update)
+*   **Floating Multi-Selection Toolbar**: Created [AlignmentToolbar.jsx](file:///c:/Users/hanse/Documents/Web/LVGL_ONLINE_HK/src/components/AlignmentToolbar.jsx) that automatically floats above the canvas frame whenever 2 or more widgets are selected. Offers 1-click Canva-style alignment tools:
+    *   **Align**: Left, Center X, Right, Top, Center Y, Bottom.
+    *   **Distribute**: Equal Horizontal & Vertical Gap spacing.
+    *   **Match Size**: Match Width, Match Height, Match Both.
+    *   **Canvas Align**: Center Horizontal & Vertical relative to display frame.
+*   **Live Transform/Resize Alignment (`onTransform`)**: Integrated live calculation of alignment guides during widget resizing inside [WidgetCanvas.jsx](file:///c:/Users/hanse/Documents/Web/LVGL_ONLINE_HK/src/components/WidgetCanvas/WidgetCanvas.jsx). Using `overrideW` & `overrideH` parameters, resizing widgets displays real-time alignment against other canvas objects.
+*   **Size-Matching Guides (Cyan `#22d3ee`)**: Renders bracket indicators (`⊢───⊣`) when resizing or moving a widget to match the exact width or height of any other widget on screen.
+*   **Equal-Spacing Distribute Guides (Orange `#f97316`)**: Displays tick-marked gap indicators when the distance between 3 or more widgets is equalized horizontally or vertically.
+*   **Batch Store Action**: Added `batchUpdateWidgets` in [useWidgetStore.js](file:///c:/Users/hanse/Documents/Web/LVGL_ONLINE_HK/src/store/useWidgetStore.js) to execute multi-widget alignment and distribution in a single atomic pass with complete history undo/redo support.
+
 ---
 
 ## 🧪 Verification Results
@@ -111,15 +122,15 @@ Added 7 essential smartwatch widgets with custom Konva renderers, designer prope
 ### 1. Build Verification
 Ran a production build checking for compilation errors, typescript/syntax bugs, and assets validation:
 ```bash
-vite build
+npx vite build
 ```
-*   **Result**: Success. All 548 modules compiled clean:
+*   **Result**: Success. All 550 modules compiled clean:
     ```text
-    ✓ 548 modules transformed.
+    ✓ 550 modules transformed.
     dist/index.html                     0.47 kB
-    dist/assets/index-C1yxVwwp.css     43.91 kB
-    dist/assets/index-DOHwhDi8.js   1,014.20 kB
-    ✓ built in 11.03s
+    dist/assets/index-BR3ITY8D.css     49.55 kB
+    dist/assets/index-BYmqkCSX.js   1,059.62 kB
+    ✓ built in 12.35s
     ```
 
 ### 2. LVGL C Codegen Validation
