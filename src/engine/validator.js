@@ -10,10 +10,21 @@ const MEMORY_FOOTPRINTS = {
   rect: 3072,           // 3 KB container / shape
   button: 4096,         // 4 KB button group
   clock: 4096,          // 4 KB compound clock
+  clock_hour: 2048,     // 2 KB split clock hour label
+  clock_minute: 2048,   // 2 KB split clock minute label
+  clock_separator: 1024, // 1 KB split clock separator label
   date: 4096,           // 4 KB compound calendar date
   notification_bar: 6144, // 6 KB top status bar
   textarea: 8192,       // 8 KB text area input buffer
   keyboard: 12288,      // 12 KB virtual keyboard grid
+  image: 4096,          // 4 KB image container (actual image in flash/PSRAM)
+  slider: 3072,         // 3 KB slider widget
+  switch: 2048,         // 2 KB switch toggle
+  arc: 4096,            // 4 KB arc/gauge
+  bar: 2048,            // 2 KB progress bar
+  checkbox: 2048,       // 2 KB checkbox
+  dropdown: 4096,       // 4 KB dropdown list
+  spinner: 3072,        // 3 KB spinner animation
 };
 
 export function validateProject(screens, widgets, device) {

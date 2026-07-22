@@ -617,15 +617,31 @@ globs: ["src/pages/**"]
   ```
 - Jika screen `scrollDirection = "none"` → tab bar tidak tampil (single page screen, tidak perlu tab).
 
-**UX Details — Canvas:**
-- Grid overlay (toggle). Snap-to-grid (toggle).
-- Multi-select dengan drag selection box. Delete dengan `Del` key.
-- Widget yang di-drag dari palette → masuk ke **page yang sedang aktif**.
-- Widget bisa di-copy paste lintas page (Ctrl+C di Page 1 → pindah ke tab Page 2 → Ctrl+V).
+**UX Details — LeftSidebar (Widget Palette & Layers):**
+- **Dual Add Workflow:** Widget templates dapat ditambahkan ke active screen canvas menggunakan **Single Click** (otomatis ditempatkan di posisi tengah layar) maupun **Drag-and-Drop**.
+- **Layers Panel:** Menampilkan hierarki widget, status lock/unlock, visibility, reorder z-index (foreground/background), grouping (`📁 Group`), serta kontrol **Split/Joint** untuk Clock dan Status Bar.
 
-**UX Details — RightPanel (termasuk On Tap / Shortcut):**
-- Context-aware. Pilih widget biasa → basic props (X, Y, W, H, color, font, opacity).
-- Pilih ClockWidget → accordion per sub-element (HH, separator, MM).
+**UX Details — Canvas & Canva-Style Smart Alignment:**
+- **Always-On Visual Guides (Canva Style):** Saat widget di-drag, sistem secara otomatis menghitung dan merender garis pandu alignment berwarna merah muda (`#ec4899`).
+  - **Horizontal Alignment:** Sisi Kiri-ke-Kiri, Tengah-ke-Tengah, Kanan-ke-Kanan, serta Sisi Kiri/Kanan antar widget dan batas canvas.
+  - **Vertical Alignment:** Sisi Atas-ke-Atas, Tengah-ke-Tengah, Bawah-ke-Bawah, serta Sisi Atas/Bawah antar widget dan batas canvas.
+- **Magnet Snapping Toggle (🧲):**
+  - **Visual Guides:** Garis pandu selalu aktif tampil saat drag sebagai referensi visual presisi (seperti Canva / PowerPoint).
+  - **Magnet ON:** Mengunci dan menempelkan posisi widget secara presisi jika berada dalam toleransi 5px dari garis pandu terdekat.
+  - **Magnet OFF:** Garis pandu tetap aktif sebagai visual reference tanpa menarik posisi widget.
+- **High-Contrast Grid (▦):** Toggle grid canvas 10px dengan garis kontras tinggi (`rgba(255,255,255,0.2)`).
+- **Flanking Page Matrix Previews:** Menampilkan preview visual page tetangga (Kiri, Kanan, Atas, Bawah) di sekeliling canvas utama dengan tombol cepat tambah page (`➕`), navigasi slide, dan popover pengatur animasi transisi (`⚙️`).
+- Multi-select dengan `Ctrl`/`Shift`+Click dan drag concurrent group movement. Delete widget dengan `Del` key atau ikon sampah.
+
+**UX Details — RightPanel & Screen Settings:**
+- **Screen Settings (saat tidak ada widget terpilih):** Menampilkan kontrol konfigurasi layar aktif:
+  - **Background Color:** Color picker warna dasar screen (`bgColor`).
+  - **Background Image (Wallpaper):** Field input nama variabel C-array gambar background (contoh: `wallpaper_space_png`). Generator memproduksi kode C LVGL yang siap diedit via VSCode:
+    ```c
+    LV_IMG_DECLARE(wallpaper_space_png);
+    lv_obj_set_style_bg_img_src(ui_Screen_1, &wallpaper_space_png, LV_PART_MAIN);
+    ```
+- **Property Inspector (saat widget terpilih):** Edit posisi (X, Y via numeric & slider), ukuran (W, H via numeric & scale transform), warna, opacity, border, font size, serta event **On Tap**.
 - **Section "On Tap"** — ada di SEMUA widget, default `None`:
 
   | Pilihan | Efek |

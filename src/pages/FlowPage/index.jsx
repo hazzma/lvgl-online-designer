@@ -37,14 +37,20 @@ const ANIM_OPTIONS = [
 const selectCls = 'w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer';
 const inputCls = 'w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition-colors font-mono';
 
+import { useWidgetStore } from '../../store/useWidgetStore.js';
+
 // ── Edge Config Sidebar ───────────────────────────────────────────────────────
 function EdgeConfigPanel({ edge, onUpdate, onDelete, onClose }) {
   const [trigger, setTrigger] = useState(edge.trigger || 'button_press');
   const [animation, setAnimation] = useState(edge.animation || 'slide_left');
   const [duration, setDuration] = useState(edge.duration || 300);
+  const [triggerWidgetId, setTriggerWidgetId] = useState(edge.triggerWidgetId || '');
+
+  const widgetsMap = useWidgetStore((state) => state.widgets);
+  const sourceWidgets = widgetsMap[edge.source] || [];
 
   const handleSave = () => {
-    onUpdate(edge.id, { trigger, animation, duration });
+    onUpdate(edge.id, { trigger, animation, duration, triggerWidgetId });
   };
 
   return (
@@ -69,11 +75,23 @@ function EdgeConfigPanel({ edge, onUpdate, onDelete, onClose }) {
         </div>
 
         <div>
-          <label className="block text-[10px] text-slate-500 mb-1.5 uppercase font-bold tracking-wider">Trigger</label>
-          <select value={trigger} onChange={(e) => setTrigger(e.target.value)} className={selectCls}>
-            {TRIGGER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          <label className="block text-[10px] text-slate-500 mb-1.5 uppercase font-bold tracking-wider">Trigger Widget</label>
+          <select value={triggerWidgetId} onChange={(e) => setTriggerWidgetId(e.target.value)} className={selectCls}>
+            <option value="">-- Generic Screen Event --</option>
+            {sourceWidgets.map((w) => (
+              <option key={w.id} value={w.id}>{w.name || w.id} ({w.type})</option>
+            ))}
           </select>
         </div>
+
+        {!triggerWidgetId && (
+          <div>
+            <label className="block text-[10px] text-slate-500 mb-1.5 uppercase font-bold tracking-wider">Screen Event Trigger</label>
+            <select value={trigger} onChange={(e) => setTrigger(e.target.value)} className={selectCls}>
+              {TRIGGER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="block text-[10px] text-slate-500 mb-1.5 uppercase font-bold tracking-wider">Animation</label>

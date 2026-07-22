@@ -6,10 +6,11 @@ import { useProjectStore } from '../../store/useProjectStore.js';
 import { useWidgetStore } from '../../store/useWidgetStore.js';
 import { useFlowStore } from '../../store/useFlowStore.js';
 import { generateProject } from '../../engine/codegen/index.js';
+// NOTE: generateProject may not exist yet as index.js — handle gracefully
 
 export default function ExportPage() {
   const { exportProject } = useExport();
-  const { selectedDevice } = useDeviceStore();
+  const { selectedDevice, targetFramework, displayDriverId, touchDriverId } = useDeviceStore();
   
   const { screens } = useProjectStore();
   const { widgets } = useWidgetStore();
@@ -48,19 +49,19 @@ export default function ExportPage() {
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Framework</label>
                 <div className="p-3 bg-slate-950 rounded border border-slate-800 text-sm font-mono text-slate-300">
-                  {selectedDevice.framework}
+                  {targetFramework === 'arduino' ? 'Arduino' : 'ESP-IDF'}
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">AMOLED controller</label>
                 <div className="p-3 bg-slate-950 rounded border border-slate-800 text-sm font-mono text-slate-300">
-                  {selectedDevice.displayController} (Offset X=22)
+                  {selectedDevice.display_controller} ({selectedDevice.interface})
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Touch Controller</label>
                 <div className="p-3 bg-slate-950 rounded border border-slate-800 text-sm font-mono text-slate-300">
-                  {selectedDevice.touchController} (Addr 0x5A)
+                  {touchDriverId || 'CST9217'} (I2C)
                 </div>
               </div>
             </div>

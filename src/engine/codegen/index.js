@@ -52,6 +52,30 @@ export function generateProject(projectName, screens, widgets, edges, device) {
   const rootScreen = screens.find((s) => s.isRoot) || screens[0];
   const rootVarName = rootScreen ? `ui_${rootScreen.id.replace(/-/g, '_')}` : '';
 
+  // Generate dynamic font defines for lv_conf.h
+  const fontDefines = fonts.usedFonts
+    .map((size) => `#define LV_FONT_MONTSERRAT_${size} 1`)
+    .join('\n');
+
+  // Smartwatch target lv_conf.h structure
+  const dynamicLvConf = `
+#ifndef LV_CONF_H
+#define LV_CONF_H
+
+#define LV_COLOR_DEPTH 16
+#define LV_COLOR_16_SWAP 1
+#define LV_MEM_CUSTOM 0
+#define LV_MEM_SIZE (128U * 1024U) // Custom allocation SRAM limit
+
+/* Dynamic Font parameters */
+${fontDefines}
+
+#define LV_TICK_CUSTOM     1
+#define LV_TICK_CUSTOM_SYS_TIME_EXPR (esp_timer_get_time() / 1000)
+
+#endif // LV_CONF_H
+  `.trim();
+
   // Assemble ui.h header content
   const uiHContent = `
 #ifndef UI_H
@@ -110,7 +134,7 @@ void ui_init(void) {
   return {
     files: {
       'platformio.ini': pioConfig,
-      'include/lv_conf.h': LV_CONF_H_CONTENT,
+      'include/lv_conf.h': dynamicLvConf,
       [mainFilename]: mainCode,
       'src/display_driver.h': displayDrv.hContent,
       'src/display_driver.c': displayDrv.cContent,

@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { useWidgetStore } from '../store/useWidgetStore.js';
 import { useProjectStore } from '../store/useProjectStore.js';
+import { useDeviceStore } from '../store/useDeviceStore.js';
+import { getDefaultProps, getDefaultSize } from '../utils/widgetDefaults.js';
 
 const WIDGET_TEMPLATES = [
   { type: 'text', label: 'Label / Text', icon: 'T', description: 'Simple text label' },
@@ -10,6 +12,13 @@ const WIDGET_TEMPLATES = [
   { type: 'textarea', label: 'TextArea', icon: '✍', description: 'Multi-line text input' },
   { type: 'clock', label: 'Clock', icon: '🕒', description: 'Time display widget' },
   { type: 'date', label: 'Date', icon: '📅', description: 'Day/date stamp' },
+  { type: 'slider', label: 'Slider', icon: '⎯', description: 'Adjustable range input' },
+  { type: 'switch', label: 'Switch', icon: '◑', description: 'On/off toggle' },
+  { type: 'arc', label: 'Arc / Gauge', icon: '◔', description: 'Circular progress' },
+  { type: 'bar', label: 'Progress Bar', icon: '▬', description: 'Horizontal bar' },
+  { type: 'checkbox', label: 'Checkbox', icon: '☑', description: 'Check toggle' },
+  { type: 'dropdown', label: 'Dropdown', icon: '▾', description: 'Selection menu' },
+  { type: 'spinner', label: 'Spinner', icon: '◌', description: 'Loading indicator' },
   { type: 'keyboard', label: 'Keyboard', icon: '⌨', description: 'Alphanumeric keyboard' },
   { type: 'notification_bar', label: 'Status Bar', icon: '🔋', description: 'Top battery/wifi bar' },
 ];
@@ -17,6 +26,10 @@ const WIDGET_TEMPLATES = [
 const WIDGET_TYPE_ICONS = {
   text: 'T', rect: '▢', button: '⧇', image: '🖼', textarea: '✍',
   clock: '🕒', date: '📅', keyboard: '⌨', notification_bar: '🔋',
+  clock_hour: 'H', clock_minute: 'M', clock_separator: ':',
+  slider: '⎯', switch: '◑', arc: '◔', bar: '▬',
+  checkbox: '☑', dropdown: '▾', spinner: '◌',
+  status_clock: '🕒', status_wifi: '📶', status_battery: '🔋',
 };
 
 // Clock sub-elements definition for the expanded layer view
@@ -29,9 +42,56 @@ const CLOCK_SUB_ELEMENTS = [
 
 // ── Palette Panel ─────────────────────────────────────────────────────────────
 function PalettePanel() {
+  const { addWidget, selectWidget, widgets } = useWidgetStore();
+  const { activeScreenId, activePageId, pushHistory } = useProjectStore();
+  const { selectedDevice } = useDeviceStore();
+
   const handleDragStart = (e, widgetType) => {
     e.dataTransfer.setData('application/reactflow', widgetType);
     e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleAddWidget = (widgetType) => {
+    if (!activeScreenId) return;
+    const activeWidgets = widgets[activeScreenId] || [];
+    const { width, height } = getDefaultSize(widgetType, selectedDevice?.width || 240);
+
+    let x = Math.max(0, Math.round((selectedDevice?.width - width) / 2));
+    let y = Math.max(0, Math.round((selectedDevice?.height - height) / 2));
+    if (widgetType === 'notification_bar') {
+      x = 0;
+      y = 0;
+    }
+
+    const newWidget = {
+      id: `widget-${Date.now()}`,
+      name: `${widgetType}_${activeWidgets.length + 1}`,
+      type: widgetType,
+      screenId: activeScreenId,
+      pageId: activePageId || 'page-1',
+      x,
+      y,
+      width,
+      height,
+      zIndex: activeWidgets.length,
+      locked: false,
+      visible: true,
+      persistent: false,
+      props: getDefaultProps(widgetType),
+      onTap: {
+        action: 'none',
+        targetScreenId: null,
+        targetPageIndex: null,
+        overlayScreenId: null,
+        customEventName: null,
+        animation: 'slide_left',
+        duration: 300,
+      },
+    };
+
+    addWidget(newWidget);
+    pushHistory();
+    selectWidget(newWidget.id);
   };
 
   return (
@@ -41,14 +101,15 @@ function PalettePanel() {
           key={tpl.type}
           draggable
           onDragStart={(e) => handleDragStart(e, tpl.type)}
-          className="flex items-center gap-3 p-3 bg-slate-800/40 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 rounded-lg cursor-grab active:cursor-grabbing transition group"
+          onClick={() => handleAddWidget(tpl.type)}
+          className="flex items-center gap-3 p-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-blue-500/50 rounded-lg cursor-pointer transition group select-none"
         >
-          <div className="w-8 h-8 rounded bg-slate-900 group-hover:bg-blue-600/10 text-slate-300 group-hover:text-blue-400 flex items-center justify-center font-mono font-bold text-sm transition-colors shrink-0">
+          <div className="w-8 h-8 rounded bg-slate-900 group-hover:bg-blue-600/20 text-slate-200 group-hover:text-blue-400 flex items-center justify-center font-mono font-bold text-sm transition-colors shrink-0">
             {tpl.icon}
           </div>
           <div>
-            <div className="text-xs font-semibold text-slate-200 group-hover:text-white transition-colors">{tpl.label}</div>
-            <div className="text-[10px] text-slate-500">{tpl.description}</div>
+            <div className="text-xs font-semibold text-slate-100 group-hover:text-white transition-colors">{tpl.label}</div>
+            <div className="text-[11px] text-slate-300 font-medium">{tpl.description}</div>
           </div>
         </div>
       ))}
@@ -83,7 +144,7 @@ function ClockSubLayers({ widget, onSelectElement }) {
           >
             <div className="w-3 h-3 rounded-full border border-slate-700 shrink-0" style={{ backgroundColor: color }} />
             <span className="text-[10px] text-slate-400 truncate flex-1">{el.label}</span>
-            {dimmed && <span className="text-[9px] text-slate-600">hidden</span>}
+            {dimmed && <span className="text-[9px] text-slate-500">hidden</span>}
           </div>
         );
       })}
@@ -103,17 +164,17 @@ function GroupRow({ group, screenWidgets, onSelectWidget, selectedWidgetId, sele
       <div className={`flex items-center gap-1.5 px-2 py-2 bg-slate-800/60 ${group.collapsed ? '' : 'border-b border-slate-700/40'}`}>
         <button
           onClick={() => toggleGroupCollapse(group.id)}
-          className="w-4 h-4 flex items-center justify-center text-slate-500 hover:text-slate-300 transition text-[11px]"
+          className="w-4 h-4 flex items-center justify-center text-slate-400 hover:text-slate-200 transition text-[11px]"
         >
           {group.collapsed ? '▶' : '▼'}
         </button>
-        <span className="text-[10px] font-bold text-slate-400 flex-1 truncate">📁 {group.name}</span>
+        <span className="text-[10px] font-bold text-slate-300 flex-1 truncate">📁 {group.name}</span>
 
         {/* Group actions */}
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => { toggleGroupLock(screenId, group.id); pushHistory(); }}
-            className={`w-5 h-5 flex items-center justify-center rounded text-[10px] transition ${allLocked ? 'text-amber-400' : 'text-slate-600 hover:text-slate-400'}`}
+            className={`w-5 h-5 flex items-center justify-center rounded text-[10px] transition ${allLocked ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'}`}
             title={allLocked ? 'Unlock all' : 'Lock all'}
           >
             {allLocked ? '🔒' : '🔓'}
@@ -143,7 +204,7 @@ function GroupRow({ group, screenWidgets, onSelectWidget, selectedWidgetId, sele
               key={w.id}
               widget={w}
               isSelected={selectedWidgetId === w.id || selectedWidgetIds.includes(w.id)}
-              onSelect={onSelectWidget}
+              onSelect={(e) => onSelectWidget(e, w.id)}
               screenId={screenId}
               pushHistory={pushHistory}
               indented
@@ -157,11 +218,13 @@ function GroupRow({ group, screenWidgets, onSelectWidget, selectedWidgetId, sele
 
 // ── Individual Layer Row ──────────────────────────────────────────────────────
 function LayerRow({ widget, isSelected, onSelect, screenId, pushHistory, indented = false }) {
-  const { toggleWidgetVisibility, toggleWidgetLock, reorderWidgets, updateWidgetProps, widgets } = useWidgetStore();
+  const { toggleWidgetVisibility, toggleWidgetLock, reorderWidgets, widgets, splitClockWidget, joinClockWidgets, splitStatusBarWidget, joinStatusBarWidgets } = useWidgetStore();
   const [clockExpanded, setClockExpanded] = useState(false);
 
   const isClockWidget = widget.type === 'clock';
-  const isClockSplit = isClockWidget && widget.props?.splitElements === true;
+  const isClockSubWidget = ['clock_hour', 'clock_minute', 'clock_separator'].includes(widget.type);
+  const isSbarWidget = widget.type === 'notification_bar';
+  const isSbarSubWidget = ['status_clock', 'status_wifi', 'status_battery'].includes(widget.type);
 
   const list = widgets[screenId] || [];
   const idx = list.findIndex((w) => w.id === widget.id);
@@ -179,9 +242,63 @@ function LayerRow({ widget, isSelected, onSelect, screenId, pushHistory, indente
 
   const handleClockSplitToggle = (e) => {
     e.stopPropagation();
-    updateWidgetProps(screenId, widget.id, { splitElements: !isClockSplit });
-    setClockExpanded(!isClockSplit);
+    splitClockWidget(screenId, widget.id);
     pushHistory();
+  };
+
+  const handleClockJoin = (e) => {
+    e.stopPropagation();
+    const sourceId = widget._splitSourceId;
+    const siblings = list
+      .filter((w) => ['clock_hour', 'clock_minute', 'clock_separator'].includes(w.type) && w._splitSourceId === sourceId)
+      .map((w) => w.id);
+    if (siblings.length > 0) {
+      joinClockWidgets(screenId, siblings);
+      pushHistory();
+    }
+  };
+
+  const handleSbarSplitToggle = (e) => {
+    e.stopPropagation();
+    splitStatusBarWidget(screenId, widget.id);
+    pushHistory();
+  };
+
+  const handleSbarJoin = (e) => {
+    e.stopPropagation();
+    const sourceId = widget._splitSourceId;
+    const siblings = list
+      .filter((w) => ['status_clock', 'status_wifi', 'status_battery'].includes(w.type) && w._splitSourceId === sourceId)
+      .map((w) => w.id);
+    if (siblings.length > 0) {
+      joinStatusBarWidgets(screenId, siblings);
+      pushHistory();
+    }
+  };
+
+  const handleSbarJoinFromParent = (e) => {
+    e.stopPropagation();
+    const siblings = list
+      .filter((w) => ['status_clock', 'status_wifi', 'status_battery'].includes(w.type) && w._splitSourceId === widget.id)
+      .map((w) => w.id);
+    if (siblings.length > 0) {
+      joinStatusBarWidgets(screenId, siblings);
+      pushHistory();
+    }
+  };
+
+  // Get display name for the widget type
+  const getDisplayName = () => {
+    switch (widget.type) {
+      case 'clock_hour': return 'Hour (HH)';
+      case 'clock_minute': return 'Minute (MM)';
+      case 'clock_separator': return 'Separator';
+      case 'notification_bar': return 'Status Bar';
+      case 'status_clock': return 'Status Clock';
+      case 'status_wifi': return 'Status WiFi';
+      case 'status_battery': return 'Status Battery';
+      default: return widget.type.charAt(0).toUpperCase() + widget.type.slice(1).replace('_', ' ');
+    }
   };
 
   return (
@@ -198,7 +315,7 @@ function LayerRow({ widget, isSelected, onSelect, screenId, pushHistory, indente
         {isClockWidget && (
           <button
             onClick={(e) => { e.stopPropagation(); setClockExpanded(!clockExpanded); }}
-            className="w-4 h-4 flex items-center justify-center text-slate-500 hover:text-slate-300 transition text-[10px] shrink-0"
+            className="w-4 h-4 flex items-center justify-center text-slate-400 hover:text-slate-200 transition text-[10px] shrink-0"
             title="Expand clock elements"
           >
             {clockExpanded ? '▼' : '▶'}
@@ -214,7 +331,7 @@ function LayerRow({ widget, isSelected, onSelect, screenId, pushHistory, indente
         {/* Name */}
         <div className="flex-1 min-w-0">
           <div className={`text-[11px] font-medium truncate ${isSelected ? 'text-blue-200' : 'text-slate-300'}`}>
-            {widget.type === 'notification_bar' ? 'Status Bar' : widget.type.charAt(0).toUpperCase() + widget.type.slice(1).replace('_', ' ')}
+            {getDisplayName()}
           </div>
         </div>
 
@@ -222,14 +339,47 @@ function LayerRow({ widget, isSelected, onSelect, screenId, pushHistory, indente
         {isClockWidget && (
           <button
             onClick={handleClockSplitToggle}
-            className={`shrink-0 px-1.5 py-0.5 text-[9px] rounded border transition font-bold ${
-              isClockSplit
-                ? 'bg-blue-600/20 border-blue-500/40 text-blue-400'
-                : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-600'
-            }`}
-            title={isClockSplit ? 'Joint — merge back to single layer' : 'Split into sub-layers'}
+            className="shrink-0 px-1.5 py-0.5 text-[9px] rounded border transition font-bold bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-blue-500"
+            title="Split into independent hour/minute/separator widgets"
           >
-            {isClockSplit ? 'Joint' : 'Split'}
+            Split
+          </button>
+        )}
+
+        {/* Split status bar button */}
+        {isSbarWidget && (
+          <button
+            onClick={widget.props?.isSplit ? handleSbarJoinFromParent : handleSbarSplitToggle}
+            className={`shrink-0 px-1.5 py-0.5 text-[9px] rounded border transition font-bold ${
+              widget.props?.isSplit
+                ? 'bg-blue-600/20 border-blue-500/40 text-blue-400 hover:bg-blue-600/30'
+                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-blue-500'
+            }`}
+            title={widget.props?.isSplit ? "Joint — merge back to single status bar" : "Split into independent elements"}
+          >
+            {widget.props?.isSplit ? 'Joint' : 'Split'}
+          </button>
+        )}
+
+        {/* Join button for split clock sub-widgets */}
+        {isClockSubWidget && (
+          <button
+            onClick={handleClockJoin}
+            className="shrink-0 px-1.5 py-0.5 text-[9px] rounded border transition font-bold bg-blue-600/20 border-blue-500/40 text-blue-400 hover:bg-blue-600/30"
+            title="Joint — merge back to single clock widget"
+          >
+            Joint
+          </button>
+        )}
+
+        {/* Join button for split status sub-widgets */}
+        {isSbarSubWidget && (
+          <button
+            onClick={handleSbarJoin}
+            className="shrink-0 px-1.5 py-0.5 text-[9px] rounded border transition font-bold bg-blue-600/20 border-blue-500/40 text-blue-400 hover:bg-blue-600/30"
+            title="Joint — merge back to single status bar"
+          >
+            Joint
           </button>
         )}
 
@@ -237,22 +387,22 @@ function LayerRow({ widget, isSelected, onSelect, screenId, pushHistory, indente
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-0.5">
           <button
             onClick={(e) => { e.stopPropagation(); toggleWidgetVisibility(screenId, widget.id); pushHistory(); }}
-            className={`w-5 h-5 flex items-center justify-center rounded text-[10px] transition ${widget.visible ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-400'}`}
+            className={`w-5 h-5 flex items-center justify-center rounded text-[10px] transition ${widget.visible ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-400'}`}
             title={widget.visible ? 'Hide' : 'Show'}
           >
             {widget.visible ? '👁' : '🚫'}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); toggleWidgetLock(screenId, widget.id); pushHistory(); }}
-            className={`w-5 h-5 flex items-center justify-center rounded text-[10px] transition ${widget.locked ? 'text-amber-400' : 'text-slate-600 hover:text-slate-400'}`}
+            className={`w-5 h-5 flex items-center justify-center rounded text-[10px] transition ${widget.locked ? 'text-amber-400' : 'text-slate-500 hover:text-slate-400'}`}
             title={widget.locked ? 'Unlock' : 'Lock'}
           >
             {widget.locked ? '🔒' : '🔓'}
           </button>
           {!indented && (
             <>
-              <button onClick={(e) => { e.stopPropagation(); moveWidget('up'); }} disabled={isTop} className="w-5 h-5 flex items-center justify-center rounded text-[10px] text-slate-500 hover:text-blue-400 disabled:opacity-20 disabled:cursor-not-allowed" title="Bring forward">↑</button>
-              <button onClick={(e) => { e.stopPropagation(); moveWidget('down'); }} disabled={isBottom} className="w-5 h-5 flex items-center justify-center rounded text-[10px] text-slate-500 hover:text-blue-400 disabled:opacity-20 disabled:cursor-not-allowed" title="Send backward">↓</button>
+              <button onClick={(e) => { e.stopPropagation(); moveWidget('up'); }} disabled={isTop} className="w-5 h-5 flex items-center justify-center rounded text-[10px] text-slate-400 hover:text-blue-400 disabled:opacity-20 disabled:cursor-not-allowed" title="Bring forward">↑</button>
+              <button onClick={(e) => { e.stopPropagation(); moveWidget('down'); }} disabled={isBottom} className="w-5 h-5 flex items-center justify-center rounded text-[10px] text-slate-400 hover:text-blue-400 disabled:opacity-20 disabled:cursor-not-allowed" title="Send backward">↓</button>
             </>
           )}
         </div>
@@ -330,8 +480,8 @@ function LayersPanel() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <span className="text-3xl mb-3 opacity-30">📑</span>
-        <p className="text-xs text-slate-500">No widgets on this screen yet.</p>
-        <p className="text-[10px] text-slate-600 mt-1">Drag from Widgets tab to add.</p>
+        <p className="text-xs text-slate-400">No widgets on this screen yet.</p>
+        <p className="text-[10px] text-slate-500 mt-1">Drag from Widgets tab to add.</p>
       </div>
     );
   }
@@ -353,7 +503,7 @@ function LayersPanel() {
           )}
           <button
             onClick={clearMultiSelect}
-            className="w-5 h-5 flex items-center justify-center text-slate-500 hover:text-slate-300 text-xs transition"
+            className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-200 text-xs transition"
           >
             ✕
           </button>
@@ -395,7 +545,7 @@ function LayersPanel() {
 
         {/* Legend */}
         <div className="pt-2 border-t border-slate-800">
-          <p className="text-[9px] text-slate-700 leading-relaxed px-1">
+          <p className="text-[9px] text-slate-500 leading-relaxed px-1">
             ↑ = foreground • <kbd className="bg-slate-800 px-1 rounded">Ctrl+Click</kbd> multi-select • <span className="text-blue-600">▶</span> expand clock elements
           </p>
         </div>
@@ -419,17 +569,17 @@ export default function LeftSidebar() {
       <div className="flex border-b border-slate-800 shrink-0">
         <button
           onClick={() => setActiveTab('palette')}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'palette' ? 'text-blue-400 border-b-2 border-blue-500 bg-slate-800/30' : 'text-slate-500 hover:text-slate-300'}`}
+          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'palette' ? 'text-blue-400 border-b-2 border-blue-500 bg-slate-800/30' : 'text-slate-300 hover:text-white'}`}
         >
           Widgets
         </button>
         <button
           onClick={() => setActiveTab('layers')}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all relative ${activeTab === 'layers' ? 'text-blue-400 border-b-2 border-blue-500 bg-slate-800/30' : 'text-slate-500 hover:text-slate-300'}`}
+          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all relative ${activeTab === 'layers' ? 'text-blue-400 border-b-2 border-blue-500 bg-slate-800/30' : 'text-slate-300 hover:text-white'}`}
         >
           Layers
           {widgetCount > 0 && (
-            <span className={`absolute top-2 right-3 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${multiCount > 0 ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300'}`}>
+            <span className={`absolute top-2 right-3 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${multiCount > 0 ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-200'}`}>
               {multiCount > 0 ? multiCount : widgetCount}
             </span>
           )}
@@ -438,9 +588,9 @@ export default function LeftSidebar() {
 
       {/* Hint */}
       <div className="px-3 py-2 border-b border-slate-800 shrink-0">
-        <p className="text-[10px] text-slate-600">
+        <p className="text-[11px] text-slate-300 font-medium">
           {activeTab === 'palette'
-            ? 'Drag widgets onto the watch canvas.'
+            ? 'Click or drag widgets to add onto canvas.'
             : `${widgetCount} widget${widgetCount !== 1 ? 's' : ''} • Ctrl+Click to multi-select`}
         </p>
       </div>

@@ -175,6 +175,34 @@ export const useWidgetStore = create(
         }
       }),
 
+    renameWidget: (screenId, widgetId, newName) =>
+      set((state) => {
+        const list = state.widgets[screenId];
+        if (!list) return;
+        
+        let sanitized = newName.replace(/[^a-zA-Z0-9_]/g, '_');
+        if (/^[0-9]/.test(sanitized)) {
+          sanitized = '_' + sanitized;
+        }
+        if (!sanitized) {
+          sanitized = 'widget';
+        }
+        
+        const isDuplicate = list.some((w) => w.id !== widgetId && (w.name === sanitized || w.id === sanitized));
+        if (isDuplicate) {
+          let suffix = 1;
+          while (list.some((w) => w.id !== widgetId && (w.name === `${sanitized}_${suffix}` || w.id === `${sanitized}_${suffix}`))) {
+            suffix++;
+          }
+          sanitized = `${sanitized}_${suffix}`;
+        }
+        
+        const widget = list.find((w) => w.id === widgetId);
+        if (widget) {
+          widget.name = sanitized;
+        }
+      }),
+
     updateWidgetOnTap: (screenId, widgetId, onTapConfig) =>
       set((state) => {
         const list = state.widgets[screenId];
@@ -224,6 +252,342 @@ export const useWidgetStore = create(
       set((state) => {
         state.widgets = {};
         state.groups = {};
+      }),
+
+    // ── Clock Split / Join ────────────────────────────────────────────────────
+    // Split a clock widget into independent hour, separator, minute sub-widgets
+    splitClockWidget: (screenId, widgetId) =>
+      set((state) => {
+        const list = state.widgets[screenId];
+        if (!list) return;
+        const idx = list.findIndex((w) => w.id === widgetId);
+        if (idx === -1) return;
+        const clock = list[idx];
+        if (clock.type !== 'clock') return;
+
+        const baseId = `csplit-${Date.now()}`;
+        const props = clock.props || {};
+
+        // Calculate approximate sub-widget positions from the clock widget bounds
+        const charW = (props.hourFontSize || 36) * 0.62;
+        const sepW = (props.hourFontSize || 36) * 0.32;
+        const hourW = charW * 2 + 8;
+        const minW = charW * 2 + 8;
+        const sepWidgetW = sepW + 8;
+        const h = (props.hourFontSize || 36) + 10;
+
+        const totalW = hourW + sepWidgetW + minW;
+        const startX = clock.x + Math.max(0, (clock.width - totalW) / 2);
+
+        const groupId = `group-clock-${Date.now()}`;
+
+        const shared = {
+          screenId: clock.screenId,
+          pageId: clock.pageId,
+          zIndex: clock.zIndex,
+          locked: false,
+          visible: true,
+          persistent: clock.persistent,
+          onTap: { action: 'none', targetScreenId: null, targetPageIndex: null, overlayScreenId: null, customEventName: null, animation: 'slide_left', duration: 300 },
+          // Tag with the original clock ID so we can rejoin later
+          _splitSourceId: clock.id,
+          groupId,
+        };
+
+        const hourWidget = {
+          ...shared,
+          id: `${baseId}-hour`,
+          type: 'clock_hour',
+          x: Math.round(startX),
+          y: clock.y + Math.max(0, (clock.height - h) / 2),
+          width: Math.round(hourW),
+          height: h,
+          props: {
+            text: '10',
+            fontSize: props.hourFontSize || 36,
+            color: props.hourColor || '#ffffff',
+            fontStyle: props.hourFontStyle || 'bold',
+          },
+        };
+
+        const sepWidget = {
+          ...shared,
+          id: `${baseId}-sep`,
+          type: 'clock_separator',
+          x: Math.round(startX + hourW),
+          y: clock.y + Math.max(0, (clock.height - h) / 2),
+          width: Math.round(sepWidgetW),
+          height: h,
+          props: {
+            text: props.separatorChar || ':',
+            fontSize: props.hourFontSize || 36,
+            color: props.separatorColor || '#94a3b8',
+            fontStyle: 'bold',
+          },
+        };
+
+        const minWidget = {
+          ...shared,
+          id: `${baseId}-min`,
+          type: 'clock_minute',
+          x: Math.round(startX + hourW + sepWidgetW),
+          y: clock.y + Math.max(0, (clock.height - h) / 2),
+          width: Math.round(minW),
+          height: h,
+          props: {
+            text: '09',
+            fontSize: props.minuteFontSize || 36,
+            color: props.minuteColor || '#3b82f6',
+            fontStyle: props.minuteFontStyle || 'bold',
+          },
+        };
+
+        // Replace the clock widget with 3 sub-widgets at the same position
+        list.splice(idx, 1, hourWidget, sepWidget, minWidget);
+
+        // Add the group record
+        state.groups[groupId] = {
+          id: groupId,
+          name: 'Split Clock',
+          memberIds: [hourWidget.id, sepWidget.id, minWidget.id],
+          collapsed: false,
+        };
+
+        // Deselect
+        state.selectedWidgetId = null;
+        state.selectedWidgetIds = [];
+      }),
+
+    // Join clock sub-widgets back into a single clock widget
+    joinClockWidgets: (screenId, subWidgetIds) =>
+      set((state) => {
+        const list = state.widgets[screenId];
+        if (!list) return;
+
+        // Find the sub-widgets
+        const subs = subWidgetIds.map((id) => list.find((w) => w.id === id)).filter(Boolean);
+        if (subs.length === 0) return;
+
+        const hourW = subs.find((w) => w.type === 'clock_hour');
+        const minW = subs.find((w) => w.type === 'clock_minute');
+        const sepW = subs.find((w) => w.type === 'clock_separator');
+
+        // Calculate bounding box of all sub-widgets
+        const allX = subs.map((w) => w.x);
+        const allY = subs.map((w) => w.y);
+        const allR = subs.map((w) => w.x + w.width);
+        const allB = subs.map((w) => w.y + w.height);
+        const minX = Math.min(...allX);
+        const minY = Math.min(...allY);
+        const maxR = Math.max(...allR);
+        const maxB = Math.max(...allB);
+
+        // Create a merged clock widget
+        const clockWidget = {
+          id: `widget-${Date.now()}`,
+          type: 'clock',
+          screenId,
+          pageId: subs[0].pageId || 'page-1',
+          x: minX,
+          y: minY,
+          width: maxR - minX,
+          height: maxB - minY,
+          zIndex: subs[0].zIndex || 0,
+          locked: false,
+          visible: true,
+          persistent: false,
+          props: {
+            clockMode: 'digital',
+            hourFontSize: hourW?.props?.fontSize || 36,
+            hourColor: hourW?.props?.color || '#ffffff',
+            hourFontStyle: hourW?.props?.fontStyle || 'bold',
+            minuteFontSize: minW?.props?.fontSize || 36,
+            minuteColor: minW?.props?.color || '#3b82f6',
+            minuteFontStyle: minW?.props?.fontStyle || 'bold',
+            separatorChar: sepW?.props?.text || ':',
+            separatorColor: sepW?.props?.color || '#94a3b8',
+            separatorVisible: true,
+            showSeconds: false,
+            secFontSize: 20,
+            secColor: '#ef4444',
+            secFontStyle: 'bold',
+            dialColor: '#1e293b',
+            dialBorderColor: '#475569',
+            handHourColor: '#ffffff',
+            handMinuteColor: '#3b82f6',
+            handSecondColor: '#ef4444',
+            showTickMarks: true,
+            showAnalogSeconds: true,
+            showDialNumbers: false,
+            dialNumberColor: '#94a3b8',
+            dialNumberFontSize: 11,
+            dialImageUrl: null,
+            handHourImageUrl: null,
+            handHourWidth: 12,
+            handHourHeight: 0,
+            handHourPivotX: 0.5,
+            handHourPivotY: 0.85,
+            handMinuteImageUrl: null,
+            handMinuteWidth: 8,
+            handMinuteHeight: 0,
+            handMinutePivotX: 0.5,
+            handMinutePivotY: 0.85,
+            handSecondImageUrl: null,
+            handSecondWidth: 4,
+            handSecondHeight: 0,
+            handSecondPivotX: 0.5,
+            handSecondPivotY: 0.85,
+          },
+          onTap: { action: 'none', targetScreenId: null, targetPageIndex: null, overlayScreenId: null, customEventName: null, animation: 'slide_left', duration: 300 },
+        };
+
+        // Remove sub-widgets and insert merged clock at the first sub's position
+        const firstIdx = Math.min(...subWidgetIds.map((id) => list.findIndex((w) => w.id === id)).filter((i) => i !== -1));
+        state.widgets[screenId] = list.filter((w) => !subWidgetIds.includes(w.id));
+        state.widgets[screenId].splice(firstIdx, 0, clockWidget);
+
+        state.selectedWidgetId = clockWidget.id;
+        state.selectedWidgetIds = [];
+      }),
+
+    // Split a status bar into status_clock, status_wifi, and status_battery sub-widgets (grouped)
+    splitStatusBarWidget: (screenId, widgetId) =>
+      set((state) => {
+        const list = state.widgets[screenId];
+        if (!list) return;
+        const idx = list.findIndex((w) => w.id === widgetId);
+        if (idx === -1) return;
+        const sbar = list[idx];
+        if (sbar.type !== 'notification_bar') return;
+
+        const baseId = `sbsplit-${Date.now()}`;
+        const props = sbar.props || {};
+
+        // Tag the sbar parent itself as split to only draw its background block
+        sbar.props = { ...sbar.props, isSplit: true };
+
+        const groupId = `group-sbar-${Date.now()}`;
+        sbar.groupId = groupId;
+
+        const shared = {
+          screenId: sbar.screenId,
+          pageId: sbar.pageId,
+          zIndex: sbar.zIndex,
+          locked: false,
+          visible: true,
+          persistent: sbar.persistent,
+          onTap: { action: 'none', targetScreenId: null, targetPageIndex: null, overlayScreenId: null, customEventName: null, animation: 'slide_left', duration: 300 },
+          _splitSourceId: sbar.id,
+          groupId: groupId,
+        };
+
+        const clockWidget = {
+          ...shared,
+          id: `${baseId}-clock`,
+          type: 'status_clock',
+          x: sbar.x + 10,
+          y: sbar.y,
+          width: 50,
+          height: sbar.height,
+          props: {
+            text: '10:09',
+            fontSize: 11,
+            color: props.color || '#ffffff',
+            fontStyle: 'bold',
+            positionMode: 'left',
+          },
+        };
+
+        const wifiWidget = {
+          ...shared,
+          id: `${baseId}-wifi`,
+          x: sbar.x + sbar.width - 50,
+          y: sbar.y,
+          width: 14,
+          height: sbar.height,
+          type: 'status_wifi',
+          props: {
+            color: props.color || '#ffffff',
+            wifiStyle: 'classic',
+            showWifi: props.showWifi !== false,
+            positionMode: 'right',
+          },
+        };
+
+        const batteryWidget = {
+          ...shared,
+          id: `${baseId}-battery`,
+          x: sbar.x + sbar.width - 56,
+          y: sbar.y,
+          width: 50,
+          height: sbar.height,
+          type: 'status_battery',
+          props: {
+            color: props.color || '#ffffff',
+            batteryLevel: props.batteryLevel !== undefined ? props.batteryLevel : 80,
+            isCharging: props.isCharging || false,
+            showPercentage: false,
+            baseColor: '#10b981',
+            lowBatteryThreshold: 20,
+            lowBatteryColor: '#ef4444',
+            chargingColor: '#10b981',
+            positionMode: 'right',
+          },
+        };
+
+        // Insert the children elements right after the parent bar in the list
+        list.splice(idx + 1, 0, clockWidget, wifiWidget, batteryWidget);
+
+        // Add the group record
+        state.groups[groupId] = {
+          id: groupId,
+          name: 'Status Bar',
+          memberIds: [sbar.id, clockWidget.id, wifiWidget.id, batteryWidget.id],
+          collapsed: false,
+        };
+
+        state.selectedWidgetId = sbar.id;
+        state.selectedWidgetIds = [];
+      }),
+
+    // Join status bar sub-widgets back into a single notification bar
+    joinStatusBarWidgets: (screenId, subWidgetIds) =>
+      set((state) => {
+        const list = state.widgets[screenId];
+        if (!list) return;
+
+        const subs = subWidgetIds.map((id) => list.find((w) => w.id === id)).filter(Boolean);
+        if (subs.length === 0) return;
+
+        // Find parent bar using splitSource ID reference
+        const splitSourceId = subs[0]._splitSourceId;
+        const parentBar = list.find((w) => w.id === splitSourceId);
+
+        const clockW = subs.find((w) => w.type === 'status_clock');
+        const wifiW = subs.find((w) => w.type === 'status_wifi');
+        const batteryW = subs.find((w) => w.type === 'status_battery');
+
+        if (parentBar) {
+          parentBar.props = {
+            ...parentBar.props,
+            isSplit: false,
+            color: clockW?.props?.color || batteryW?.props?.color || parentBar.props.color || '#ffffff',
+            batteryLevel: batteryW?.props?.batteryLevel !== undefined ? batteryW?.props?.batteryLevel : parentBar.props.batteryLevel,
+            isCharging: batteryW?.props?.isCharging || parentBar.props.isCharging || false,
+            showWifi: wifiW?.props?.showWifi !== false,
+          };
+          
+          if (parentBar.groupId && state.groups[parentBar.groupId]) {
+            delete state.groups[parentBar.groupId];
+          }
+          parentBar.groupId = null;
+        }
+
+        // Filter out child sub-widgets
+        state.widgets[screenId] = list.filter((w) => !subWidgetIds.includes(w.id));
+
+        state.selectedWidgetId = parentBar ? parentBar.id : null;
+        state.selectedWidgetIds = [];
       }),
   }))
 );

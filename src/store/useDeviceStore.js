@@ -49,6 +49,7 @@ export const useDeviceStore = create(
     selectDevice: (device) =>
       set((state) => {
         state.selectedDevice = device;
+        localStorage.setItem('watchforge_active_device', JSON.stringify(device));
       }),
 
     setTargetFramework: (framework) =>

@@ -48,7 +48,7 @@ export default function BottomBar() {
     <footer className="h-14 bg-slate-900 border-t border-slate-800 px-4 flex items-center justify-between text-slate-100 z-10 flex-shrink-0">
       {/* Screen Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto flex-1 min-w-0">
-        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest shrink-0 mr-1">
+        <span className="text-[10px] font-bold text-slate-200 uppercase tracking-widest shrink-0 mr-1">
           Screens:
         </span>
 
@@ -64,7 +64,7 @@ export default function BottomBar() {
                 className={`group flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer select-none ${
                   isActive
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30'
-                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border border-slate-750'
                 }`}
                 onClick={() => !isRenaming && setActiveScreen(screen.id)}
                 onDoubleClick={() => handleDoubleClick(screen)}
@@ -85,12 +85,12 @@ export default function BottomBar() {
                   <span className="truncate max-w-[80px]">{screen.name}</span>
                 )}
 
-                {/* Delete button — only shown on hover, only if >1 screens */}
+                {/* Delete button — always visible slightly if >1 screens */}
                 {screens.length > 1 && !isRenaming && (
                   <button
                     onClick={(e) => handleDeleteScreen(e, screen.id)}
-                    className={`ml-0.5 w-3.5 h-3.5 flex items-center justify-center rounded-full text-[9px] transition-all opacity-0 group-hover:opacity-100 ${
-                      isActive ? 'hover:bg-blue-400 text-blue-200' : 'hover:bg-slate-600 text-slate-400'
+                    className={`ml-0.5 w-3.5 h-3.5 flex items-center justify-center rounded-full text-[9px] transition-all opacity-80 hover:opacity-100 ${
+                      isActive ? 'hover:bg-blue-400 text-blue-200' : 'hover:bg-slate-600 text-slate-200'
                     }`}
                     title="Delete screen"
                   >
@@ -104,7 +104,7 @@ export default function BottomBar() {
           {/* Add Screen Button */}
           <button
             onClick={handleAddScreen}
-            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-blue-500/50 text-xs font-medium rounded text-slate-400 hover:text-blue-400 transition-all flex items-center gap-1"
+            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-blue-500/50 text-xs font-medium rounded text-slate-200 hover:text-blue-400 transition-all flex items-center gap-1"
             title="Add new screen"
           >
             <span className="text-sm leading-none">+</span>
@@ -114,17 +114,17 @@ export default function BottomBar() {
       </div>
 
       {/* Device Info — reads from store */}
-      <div className="flex items-center gap-4 text-[10px] text-slate-500 shrink-0 ml-4">
+      <div className="flex items-center gap-4 text-[10px] text-slate-200 font-medium shrink-0 ml-4">
         <div>
           Resolution:{' '}
-          <span className="text-slate-300 font-mono">
+          <span className="text-white font-mono font-bold">
             {selectedDevice.width}×{selectedDevice.height}
           </span>
         </div>
         <div className="w-px h-3 bg-slate-700" />
         <div>
           Target:{' '}
-          <span className="text-slate-300 font-mono">
+          <span className="text-white font-mono font-bold">
             {selectedDevice.chip} ({selectedDevice.display_controller})
           </span>
         </div>

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { useWidgetStore } from './useWidgetStore.js';
 
 export const useFlowStore = create(
   immer((set, get) => ({
@@ -21,29 +22,63 @@ export const useFlowStore = create(
     // Add a custom transition edge
     addEdge: (edge) =>
       set((state) => {
-        // Avoid duplicate edges between same elements
         const exists = state.edges.some((e) => e.id === edge.id);
         if (!exists) {
           state.edges.push(edge);
         }
       }),
 
-    // Remove a custom transition edge
+    // Remove a custom transition edge (and clean up associated widget onTap configurations)
     removeEdge: (edgeId) =>
       set((state) => {
+        const edge = state.edges.find((e) => e.id === edgeId);
+        if (edge && edge.triggerWidgetId) {
+          useWidgetStore.getState().updateWidgetOnTap(edge.source, edge.triggerWidgetId, {
+            action: 'none',
+            targetScreenId: null
+          });
+        }
         state.edges = state.edges.filter((e) => e.id !== edgeId);
       }),
 
-    // Update edge configuration (trigger, animation, duration)
+    // Update edge configuration (trigger, animation, duration, triggerWidgetId)
     updateEdgeConfig: (edgeId, config) =>
       set((state) => {
         const edge = state.edges.find((e) => e.id === edgeId);
         if (edge) {
+          const oldWidgetId = edge.triggerWidgetId;
           Object.assign(edge, config);
-          // Update label to reflect new config
-          const triggerLabel = config.trigger || edge.trigger || 'button';
+          
           const animLabel = config.animation || edge.animation || 'slide_left';
-          edge.label = `${triggerLabel} / ${animLabel}`;
+          
+          let widgetName = 'Event';
+          const widgetStore = useWidgetStore.getState();
+          
+          if (edge.triggerWidgetId) {
+            const list = widgetStore.widgets[edge.source];
+            const w = list?.find((x) => x.id === edge.triggerWidgetId);
+            if (w) {
+              widgetName = w.name || w.id;
+            }
+          }
+          
+          edge.label = edge.triggerWidgetId ? `[${widgetName}] Click → ${animLabel}` : `${edge.trigger || 'button_press'} / ${animLabel}`;
+
+          // Sync back to useWidgetStore:
+          if (oldWidgetId && oldWidgetId !== edge.triggerWidgetId) {
+            widgetStore.updateWidgetOnTap(edge.source, oldWidgetId, {
+              action: 'none',
+              targetScreenId: null
+            });
+          }
+          if (edge.triggerWidgetId) {
+            widgetStore.updateWidgetOnTap(edge.source, edge.triggerWidgetId, {
+              action: 'change_screen',
+              targetScreenId: edge.target,
+              animation: edge.animation || 'slide_left',
+              duration: edge.duration || 300
+            });
+          }
         }
       }),
 
